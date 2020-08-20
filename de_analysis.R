@@ -210,7 +210,39 @@ head(read_counts)
 dim(read_counts)
 
 ##########################################################################################
-
+## Code retrieved from: https://stackoverflow.com/questions/3369959/moving-columns-within-a-data-frame-without-retyping/18540144#18540144
+moveme <- function (invec, movecommand) {
+  movecommand <- lapply(strsplit(strsplit(movecommand, ";")[[1]], 
+                                 ",|\\s+"), function(x) x[x != ""])
+  movelist <- lapply(movecommand, function(x) {
+    Where <- x[which(x %in% c("before", "after", "first", 
+                              "last")):length(x)]
+    ToMove <- setdiff(x, Where)
+    list(ToMove, Where)
+  })
+  myVec <- invec
+  for (i in seq_along(movelist)) {
+    temp <- setdiff(myVec, movelist[[i]][[1]])
+    A <- movelist[[i]][[2]][1]
+    if (A %in% c("before", "after")) {
+      ba <- movelist[[i]][[2]][2]
+      if (A == "before") {
+        after <- match(ba, temp) - 1
+      }
+      else if (A == "after") {
+        after <- match(ba, temp)
+      }
+    }
+    else if (A == "first") {
+      after <- 0
+    }
+    else if (A == "last") {
+      after <- length(myVec)
+    }
+    myVec <- append(temp, values = movelist[[i]][[1]], after = after)
+  }
+  myVec
+}
 
 ##########################################################################################
 ### Create DGEList object 
@@ -221,17 +253,62 @@ dim(read_counts)
 # lmono_gene_anno object. 
 # Type ?DGEList for details on this function
 ##########################################################################################
+# not the brightest solution, but a solution nonetheless.
+# i could probably refactor this...but i also don't want to break anything so let's leave it at this for now.
+head(read_counts)
+read_counts_temp <- read_counts[moveme(names(read_counts), "192.CA-MKK2_OX10 first")]
+read_counts_temp <- read_counts_temp[moveme(names(read_counts_temp), "191.CA-MKK2_OX10 first")]
+read_counts_temp <- read_counts_temp[moveme(names(read_counts_temp), "190.CA-MKK2_OX10 first")]
+read_counts_temp <- read_counts_temp[moveme(names(read_counts_temp), "189.CA-MKK2_OX9 first")]
+read_counts_temp <- read_counts_temp[moveme(names(read_counts_temp), "188.CA-MKK2_OX9 first")]
+read_counts_temp <- read_counts_temp[moveme(names(read_counts_temp), "187.CA-MKK2_OX9 first")]
+read_counts_temp <- read_counts_temp[moveme(names(read_counts_temp), "186.MKK2_OX5 first")]
+read_counts_temp <- read_counts_temp[moveme(names(read_counts_temp), "185.MKK2_OX5 first")]
+read_counts_temp <- read_counts_temp[moveme(names(read_counts_temp), "104.MKK2_OX5 first")]
+read_counts_temp <- read_counts_temp[moveme(names(read_counts_temp), "103.MKK2_OX4 first")]
+read_counts_temp <- read_counts_temp[moveme(names(read_counts_temp), "102.MKK2_OX4 first")]
+read_counts_temp <- read_counts_temp[moveme(names(read_counts_temp), "101.MKK2_OX4 first")]
+read_counts_temp <- read_counts_temp[moveme(names(read_counts_temp), "C5.WT first")]
+read_counts_temp <- read_counts_temp[moveme(names(read_counts_temp), "B5.WT first")]
+read_counts_temp <- read_counts_temp[moveme(names(read_counts_temp), "A5.WT first")]
+head(read_counts_temp)
+head(read_counts)
+read_counts <- read_counts_temp
+
 dge <- DGEList(counts = read_counts,
                group = sample_info$treatment,
                genes = fusarium_gene_anno )
 
+read_counts
+sample_info
+dge$samples
+
 print(dge) # The list has 3 elements: counts, samples and genes
+#debugging
+# 
+# names <- as.factor(sample_info$sample_id)
+# names
+# group <- as.factor(sample_info$treatment)
+# group
+# lib.size <- as.factor(dge$samples$lib.size)
+# lib.size
+# norm.factors <- as.factor(dge$samples$norm.factors)
+# norm.factors
+# x <- data.frame("names" = names, "group" = group, "lib.size" = lib.size, "norm.factors" = norm.factors)
+# print(x)
+# 
+# result <- x[-1]
+# row.names(result) <- x$names
+# result
+# dge$samples
+# 
+# dge$samples <- result
 
 # View summary of the library sizes and note the range of the library sizes
 summary(dge$samples$lib.size)
 # View barplot of the library sizes (in millions) and note the sample with the lowest or 
 # highest library size
-par(mar = c(10, 5, 5, 4))
+par(mar = c(11, 8, 6, 5))
 barplot(dge$samples$lib.size/1e6, ylab="Number of sequenced reads (in millions)",
         las=2, names=row.names( dge$samples))
 
@@ -286,6 +363,8 @@ dim(dge_expressed$counts)
 # library sizes of the DGEList object after the filtering is recommended.
 ##########################################################################################
 dge_expressed$samples$lib.size <- colSums(dge_expressed$counts)
+#debugging
+dge_expressed$samples
 
 ##########################################################################################
 
@@ -375,18 +454,9 @@ plotMDS(norm_dge_expressed, main="Coloured by BATCH", las=1,
 ##########################################################################################
 # convert treatment information to factors
 TREATMENT <- as.factor( sample_info$treatment )
-# debugging lines...testing to see if sample treatments are already wrong...
-# design1 <- model.matrix( ~ TREATMENT )
-# print(design1)
-# dispersions_design1 <- estimateDisp(norm_dge_expressed, design1, robust=TRUE)
-# test <- glmQLFit(dispersions_design1, design1)
-# test$samples
-# sample_info
-# print(TREATMENT)
 
 # Define reference as control so that all DE results will be interpreted as changes in
 # treatment with respect to control ( treament vs. control) samples.
-# TREATMENT <- relevel(TREATMENT, ref = "control")
 TREATMENT <- relevel(TREATMENT, ref = "wildtype")
 print(TREATMENT)
 
@@ -400,7 +470,6 @@ design1 <- model.matrix( ~ TREATMENT + BATCH )
 print(design1)
 
 # rename "TREATMENTtreatmentA" to "TREATMENTA" for simplicity
-#colnames(design1)[2] <- "TREATMENTA"
 colnames(design1)[2] <- "CA-MKK2_OX"
 colnames(design1)[3] <- "MKK2_OX"
 print(design1)
@@ -417,9 +486,9 @@ dispersions_design1$common.dispersion
 # Note from above the value of the common negative binomial dispersion. The square-root of this
 # value is called the biological coefficient of variation (BCV) and its magnitude is indicative 
 # of the biological variation between the replicate samples used in the experiment. From edgeR
-# user guide: “Typical values for the common BCV for datasets arising from well-controlled 
+# user guide: âTypical values for the common BCV for datasets arising from well-controlled 
 # experiments are 0.4 for human data, 0.1 data on genetically identical model organisms or 0.01
-# for technical replicates”.
+# for technical replicatesâ.
 bcv_design1 <- signif(sqrt(dispersions_design1$common.dispersion), 5)
 bcv_design1
 
@@ -428,12 +497,9 @@ bcv_design1
 ##########################################################################################
 # fit genewise negative binomial GLMs for design1
 glmfit_design1 <- glmQLFit(dispersions_design1, design1)
-# TODO: figure out why my samples and their treatments aren't matching up
-glmfit_design1$samples
 
 # genewise statistical tests can be performed for a given coefficient or coefficient contrast
-# qlf_design1 <- glmQLFTest( glmfit_design1, coef = "TREATMENTA" )
-qlf_design1 <- glmQLFTest( glmfit_design1, coef = "MKK2_OX")
+qlf_design1 <- glmQLFTest( glmfit_design1, coef = "CA-MKK2_OX" )
 
 # The function topTags can be called to extract the top n DE genes ranked by p-value or 
 # absolute log-fold change. Save all results by setting n to NULL. Use Benjamini-Hochberg (BH)
@@ -441,8 +507,6 @@ qlf_design1 <- glmQLFTest( glmfit_design1, coef = "MKK2_OX")
 # p-values. We do not provide a specified adjusted p-value cutoff now.
 lrt_top_design1 <- topTags(qlf_design1, adjust.method = "BH", sort.by = "PValue",
                            p.value = 0.05, n=NULL)
-# line above gives data frame with 0 columns and 0 rows
-dim(row.names(lrt_top_design1))
 row.names(lrt_top_design1$table) <- NULL
 head(lrt_top_design1$table)
 dim(lrt_top_design1$table)
@@ -500,34 +564,35 @@ print(nrow(de_genes_all))
 ### Heat map
 # To visualize the expression differences among samples for the DE genes identified.
 ##########################################################################################
-coolmap( log2cpm_expressed[ match( de_genes_all$gene_id, row.names(log2cpm_expressed)),] )
+par(mar=c(1,1,1,1), oma=c(5,1,2,0))
+coolmap( log2cpm_expressed[ match( de_genes_all$gene_id, row.names(log2cpm_expressed)),])
 
 
 ##########################################################################################
 ### Tests for over-represented GO and KEGG pathway terms
 # Performing gene ontology (GO) and KEGG pathway term enrichment tests on our lists of DE
 # genes will give us an idea of the kind of biological processes that the genes are involved 
-# in. Basically the enrichment test is a modified Fisher’s exact test (hypergeometric test)
+# in. Basically the enrichment test is a modified Fisherâs exact test (hypergeometric test)
 # to determine GO or KEGG terms that are statistically over-represented in our set of DE 
 # genes compared to particular background set of genes (universe). The choice of the universe
 # is crucial and should include all genes that have a chance to be expressed. For our purpose, 
 # the universe is selected to be the set of all genes identified as expressed. There are 
 # several packages that perform these tests available on Bioconductor like GOstats or goana
-# and kegga functions available from package “limma” that is already loaded as a dependency
-# of “edgeR” or as web based tools like DAVID (https://david.ncifcrf.gov/) or Panther 
+# and kegga functions available from package âlimmaâ that is already loaded as a dependency
+# of âedgeRâ or as web based tools like DAVID (https://david.ncifcrf.gov/) or Panther 
 # (http://pantherdb.org/). We test the enrichments seperately for up- and down-regulated 
 # genes.
 ##########################################################################################
 
-upregulated_genes <- de_genes_all$gene_id[ de_genes_all$logFC>0 ]
-write.table( upregulated_genes, file="upregulated_genes.txt", col.names = F, row.names = F, quote=F)
+upregulated_genes_ca <- de_genes_all$gene_id[ de_genes_all$logFC>0 ]
+write.table( upregulated_genes_ca, file="upregulated_genes_ca-mkk2_ox.txt", col.names = F, row.names = F, quote=F)
 
-downregulated_genes <- de_genes_all$gene_id[ de_genes_all$logFC<0 ]
-write.table( downregulated_genes, file="downregulated_genes.txt", col.names = F, row.names = F, quote=F)
+downregulated_genes_ca <- de_genes_all$gene_id[ de_genes_all$logFC<0 ]
+write.table( downregulated_genes_ca, file="downregulated_genes_ca-mkk2_ox.txt", col.names = F, row.names = F, quote=F)
 
-expressed_genes <- dge_expressed$genes$gene_id # same as row.names(log2cpm_expressed)
-length(expressed_genes)
-write.table( expressed_genes, file="expressed_genes.txt", col.names = F, row.names = F, quote=F)
+expressed_genes_ca <- dge_expressed$genes$gene_id # same as row.names(log2cpm_expressed)
+length(expressed_genes_ca)
+write.table( expressed_genes_ca, file="expressed_genes_ca-mkk2_ox.txt", col.names = F, row.names = F, quote=F)
 
 # The above files are saved to rnaseq_analysis/de_analysis. Click Refresh in the Files tab on 
 # the bottom right panel if you do not see the files there). Export those files in zipped format
