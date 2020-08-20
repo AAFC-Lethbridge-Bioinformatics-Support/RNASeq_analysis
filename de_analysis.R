@@ -284,25 +284,6 @@ sample_info
 dge$samples
 
 print(dge) # The list has 3 elements: counts, samples and genes
-#debugging
-# 
-# names <- as.factor(sample_info$sample_id)
-# names
-# group <- as.factor(sample_info$treatment)
-# group
-# lib.size <- as.factor(dge$samples$lib.size)
-# lib.size
-# norm.factors <- as.factor(dge$samples$norm.factors)
-# norm.factors
-# x <- data.frame("names" = names, "group" = group, "lib.size" = lib.size, "norm.factors" = norm.factors)
-# print(x)
-# 
-# result <- x[-1]
-# row.names(result) <- x$names
-# result
-# dge$samples
-# 
-# dge$samples <- result
 
 # View summary of the library sizes and note the range of the library sizes
 summary(dge$samples$lib.size)
@@ -499,24 +480,36 @@ bcv_design1
 glmfit_design1 <- glmQLFit(dispersions_design1, design1)
 
 # genewise statistical tests can be performed for a given coefficient or coefficient contrast
-qlf_design1 <- glmQLFTest( glmfit_design1, coef = "CA-MKK2_OX" )
+qlf_design1_ca <- glmQLFTest( glmfit_design1, coef = "CA-MKK2_OX" )
+### Repeat
+qlf_design1_mkk <- glmQLFTest( glmfit_design1, coef = "MKK2_OX" )
 
 # The function topTags can be called to extract the top n DE genes ranked by p-value or 
 # absolute log-fold change. Save all results by setting n to NULL. Use Benjamini-Hochberg (BH)
 # method to adjust p-values for multiple testing. The output is set to be sorted by ordinary
 # p-values. We do not provide a specified adjusted p-value cutoff now.
-lrt_top_design1 <- topTags(qlf_design1, adjust.method = "BH", sort.by = "PValue",
-                           p.value = 0.05, n=NULL)
-row.names(lrt_top_design1$table) <- NULL
-head(lrt_top_design1$table)
-dim(lrt_top_design1$table)
+lrt_top_design1_ca <- topTags(qlf_design1_ca, adjust.method = "BH", sort.by = "PValue",
+                              p.value = 0.05, n=NULL)
+row.names(lrt_top_design1_ca$table) <- NULL
+head(lrt_top_design1_ca$table)
+dim(lrt_top_design1_ca$table)
+### Repeat
+lrt_top_design1_mkk <- topTags(qlf_design1_mkk, adjust.method = "BH", sort.by = "PValue",
+                               p.value = 0.05, n=NULL)
+row.names(lrt_top_design1_mkk$table) <- NULL
+head(lrt_top_design1_mkk$table)
+dim(lrt_top_design1_mkk$table)
 
 # summary of DE genes based only on adjusted p-value threshold
-summary(decideTests(qlf_design1, p.value = 0.05, lfc = 0))
+summary(decideTests(qlf_design1_ca, p.value = 0.05, lfc = 0))
+### Repeat
+summary(decideTests(qlf_design1_mkk, p.value = 0.05, lfc = 0))
 
 # Summary of DE genes based on adjusted p-value threshold and a 2 fold change threshold.
 # Note the numbers for up and down regulated genes have reduced.
-summary(decideTests(qlf_design1, p.value = 0.05, lfc = log2(2)))
+summary(decideTests(qlf_design1_ca, p.value = 0.05, lfc = log2(2)))
+### Repeat
+summary(decideTests(qlf_design1_mkk, p.value = 0.05, lfc = log2(2)))
 
 # Instead of defining a hard cut-off for fold change, it would be better to select a value
 # based on the power of our experiment to detect changes in expression, which would be 
@@ -553,19 +546,31 @@ abline(v=3.5, h=0.8, col="blue")
 fold_change_cutoff=3.5
 
 # Define DE genes with these cut-offs
-summary(decideTests(qlf_design1, lfc = log2(fold_change_cutoff), p.value = 0.05))
-de_genes_all <- lrt_top_design1$table[ lrt_top_design1$table$FDR < FDR_cutoff &
-                                         ( abs(as.numeric(lrt_top_design1$table$logFC)) >
-                                             log2(fold_change_cutoff) ), ]
-head(de_genes_all)
-print(nrow(de_genes_all))
+summary(decideTests(qlf_design1_ca, lfc = log2(fold_change_cutoff), p.value = 0.05))
+de_genes_all_ca <- lrt_top_design1_ca$table[ lrt_top_design1_ca$table$FDR < FDR_cutoff &
+                                               ( abs(as.numeric(lrt_top_design1_ca$table$logFC)) >
+                                                   log2(fold_change_cutoff) ), ]
+head(de_genes_all_ca)
+print(nrow(de_genes_all_ca))
+
+
+summary(decideTests(qlf_design1_mkk, lfc = log2(fold_change_cutoff), p.value = 0.05))
+de_genes_all_mkk <- lrt_top_design1_mkk$table[ lrt_top_design1_mkk$table$FDR < FDR_cutoff &
+                                                 ( abs(as.numeric(lrt_top_design1_mkk$table$logFC)) >
+                                                     log2(fold_change_cutoff) ), ]
+head(de_genes_all_mkk)
+print(nrow(de_genes_all_mkk))
 
 ##########################################################################################
 ### Heat map
 # To visualize the expression differences among samples for the DE genes identified.
 ##########################################################################################
 par(mar=c(1,1,1,1), oma=c(5,1,2,0))
-coolmap( log2cpm_expressed[ match( de_genes_all$gene_id, row.names(log2cpm_expressed)),])
+# TODO: Need to figure out why the samples are not ordered for CAMMK2OX while being ordered for
+# MKK2OX
+coolmap( log2cpm_expressed[ match( de_genes_all_ca$gene_id, row.names(log2cpm_expressed)),])
+par(mar=c(1,1,1,1), oma=c(5,1,2,0))
+coolmap( log2cpm_expressed[ match( de_genes_all_mkk$gene_id, row.names(log2cpm_expressed)),])
 
 
 ##########################################################################################
@@ -584,15 +589,28 @@ coolmap( log2cpm_expressed[ match( de_genes_all$gene_id, row.names(log2cpm_expre
 # genes.
 ##########################################################################################
 
-upregulated_genes_ca <- de_genes_all$gene_id[ de_genes_all$logFC>0 ]
+upregulated_genes_ca <- de_genes_all_ca$gene_id[ de_genes_all_ca$logFC>0 ]
 write.table( upregulated_genes_ca, file="upregulated_genes_ca-mkk2_ox.txt", col.names = F, row.names = F, quote=F)
 
-downregulated_genes_ca <- de_genes_all$gene_id[ de_genes_all$logFC<0 ]
+downregulated_genes_ca <- de_genes_all_ca$gene_id[ de_genes_all_ca$logFC<0 ]
 write.table( downregulated_genes_ca, file="downregulated_genes_ca-mkk2_ox.txt", col.names = F, row.names = F, quote=F)
 
-expressed_genes_ca <- dge_expressed$genes$gene_id # same as row.names(log2cpm_expressed)
-length(expressed_genes_ca)
+expressed_genes_ca <- dge_expressed_ca$genes$gene_id # same as row.names(log2cpm_expressed)
+# TODO: Figure out if expressed_genes should be different for each treatment?
+length(expressed_genes)
 write.table( expressed_genes_ca, file="expressed_genes_ca-mkk2_ox.txt", col.names = F, row.names = F, quote=F)
+
+
+### Repeat
+upregulated_genes_mkk <- de_genes_all_mkk$gene_id[ de_genes_all_mkk$logFC>0 ]
+write.table( upregulated_genes_mkk, file="upregulated_genes_mkk2_ox.txt", col.names = F, row.names = F, quote=F)
+
+downregulated_genes_mkk <- de_genes_all_mkk$gene_id[ de_genes_all_mkk$logFC<0 ]
+write.table( downregulated_genes_mkk, file="downregulated_genes_mkk2_ox.txt", col.names = F, row.names = F, quote=F)
+
+expressed_genes_mkk <- dge_expressed_mkk$genes$gene_id # same as row.names(log2cpm_expressed)
+length(expressed_genes)
+write.table( expressed_genes_mkk, file="expressed_genes_mkk2_ox.txt", col.names = F, row.names = F, quote=F)
 
 # The above files are saved to rnaseq_analysis/de_analysis. Click Refresh in the Files tab on 
 # the bottom right panel if you do not see the files there). Export those files in zipped format
