@@ -19,7 +19,7 @@
 # http://bioconductor.org/packages/release/bioc/vignettes/edgeR/inst/doc/edgeRUsersGuide.pdf
 
 ##########################################################################################
-  
+
 
 ##########################################################################################
 # Useful info on RStudio:
@@ -164,7 +164,7 @@ print( colnames(fusarium_gene_anno_filtered) )
 
 # Keep only required columns (reordered) and reset row.names
 fusarium_gene_anno <- fusarium_gene_anno_filtered[, c("gene_id", "seqid","start","end",
-                                       "strand","gene_biotype")]
+                                                      "strand","gene_biotype")]
 row.names(fusarium_gene_anno) <- NULL
 
 # View first 6 (when n is not specified) rows of data.frame object lmono_gene_anno following 
@@ -449,46 +449,86 @@ plotMDS(norm_dge_expressed, main="Coloured by BATCH", las=1,
 
 
 
-
-### COMPARISON OF WILDTYPE WITH MUTANTS
 ##########################################################################################
-### Statistical modelling of data and tests for DE
-# Quote from the edgeR user guide: “Linear models are associated with normally distributed 
-# data and have long been used to describe multifactor microarray experiments. Read counts
-# however follow a negative binomial distribution. Generalized linear models (GLMs) are an 
-# extension of classical linear models to non-normally distributed response data. GLMs specify
-# probability distributions according to their mean-variance relationship and require variance
-# parameters (dispersions) to be estimated. For general experiments (with multiple factors), 
-# edgeR uses the Cox-Reid profile-adjusted likelihood (CR) method in estimating dispersions. 
-# The CR method can be used to calculate a common dispersion for all the genes, trended 
-# dispersion depending on the gene abundance, or separate dispersions for individual genes. 
-# It takes care of multiple factors by fitting GLMs with a design matrix”.
+### Power analysis
+# Use function rnapower from package RNASeqPower to perform a basic power analysis
+##########################################################################################
+
+# View help function by entering ?rnapower
+# The average depth of coverage for the transcript is one of the parameters required for
+# rnapower function. This can be estimated as follows:
+# (# of sequenced bases) / (transcriptome size)
+# Sequenced bases is the number of reads x read length (twice that if paired-end).
+# An estimate of the transciptome size can be obtained from the GTF file by summing the
+# difference between the start and end of each annotated gene. So, depth of sequencing in the
+# sample with the lowest library size will be:
+depth <- min( dge$samples$lib.size )*100*2 / sum( fusarium_gene_anno$end - fusarium_gene_anno$start )
+
+# Estimate power for a range of fold change values between 1 and 5 with other factors fixed
+# ACtually... I should figure out what to do with cv.
+power_analysis <- rnapower(depth, n=group_size, cv=0.24097, effect=seq(1, 5, by=0.1),
+                           alpha=0.05)
+par(mar=c(8,8,8,8))
+plot(names(power_analysis), power_analysis, las=1,
+     xlab="Fold change", ylab="Power", main="Power analysis",
+     sub="[parameters: n=3; alpha=0.05; coverage=5X]")
+abline(v=1.75, h=0.9, col="red")
+abline(v=1.6, h=0.8, col="blue")
+
+# Note from the plot that fold changes of 1.6 can be detected at a power of 0.8
+# Note from the plot that fold changes of 1.75 can be detected at a power of 0.9
+fold_change_cutoff_p_8=1.6
+fold_change_cutoff_p_9=1.75
+fold_change_cutoff_3.5=3.5
+fold_change_cutoff_2=2
+fold_change_cutoff_test_super_low=0.5
+
+foldchangelist <- c(fold_change_cutoff_p_8, fold_change_cutoff_p_9, fold_change_cutoff_2, fold_change_cutoff_3.5)
+
+
+
 
 ##########################################################################################
-### Define design matrix
+### Design matrix
 ##########################################################################################
-# convert treatment information to factors
-TREATMENT <- as.factor( sample_info$treatment )
 
-# Define reference as control so that all DE results will be interpreted as changes in
-# treatment with respect to control ( treament vs. control) samples.
-TREATMENT <- relevel(TREATMENT, ref = "wildtype")
-print(TREATMENT)
+# This function takes in an array of two strings (the first is our control, and the second is our treatment)
+# and generates design matrix.
+create_design_matrix <- function(pair) {
+  # convert treatment information to factors
+  # Define reference as control so that all DE results will be interpreted as changes in
+  # treatment with respect to control ( treament vs. control) samples.
+  TREATMENT <- as.factor( sample_info$treatment )
+  TREATMENT <- relevel(TREATMENT, ref = pair[1])
+  print(TREATMENT)
+  
+  # To test for differences between treatment and control while adjusting for any differences
+  # between the batches, we add a term BATCH to the model defined as follows:
+  # convert batch information to factors
+  # create design matrix without interaction term
+  BATCH <- as.factor( sample_info$batch )
+  design1 <- model.matrix( ~ TREATMENT + BATCH )
+  print(design1)
+  
+  treatmentcolstring <- paste ("TREATMENT", pair[2], sep="")
+  controlcolstring <- "(Intercept)"
 
-# To test for differences between treatment and control while adjusting for any differences
-# between the batches, we add a term BATCH to the model defined as follows:
-# convert batch information to factors
-BATCH <- as.factor( sample_info$batch )
+  # This took me 45 whole minutes to figure out :upsidedownsmiley:
+  # Filtering so that the matrix only contains the pairwise comparison and batch info... because I think we'll need the
+  # batch info later for graph making. maybe.
+  designpairwise <<- design1[, c(controlcolstring, treatmentcolstring, "BATCH2", "BATCH3")]
+  print(design1)
+  print(designpairwise)
+  
+  colnames(designpairwise)[2] <<- pair[2]
+  print(designpairwise)                 
+}
 
-# create design matrix without interaction term
-design1 <- model.matrix( ~ TREATMENT + BATCH )
-print(design1)
+# Testing function
+create_design_matrix(c("wildtype", "CA-MKK2_OX"))
 
-# rename "TREATMENTtreatmentA" to "TREATMENTA" for simplicity
-# We're going to compare CA-MKK2_OX and MKK2_OX to WT first.
-colnames(design1)[2] <- "CA-MKK2_OX"
-colnames(design1)[3] <- "MKK2_OX"
-print(design1)
+
+
 
 ##########################################################################################
 ### Estimating dispersion parameters
@@ -496,334 +536,123 @@ print(design1)
 # each gene using the function glmFit after first estimating the common, trended and gene-wise
 # negative binomial dispersions as shown below.
 ##########################################################################################
-dispersions_design1 <- estimateDisp(norm_dge_expressed, design1, robust=TRUE)
-dispersions_design1$common.dispersion
 
-# Note from above the value of the common negative binomial dispersion. The square-root of this
-# value is called the biological coefficient of variation (BCV) and its magnitude is indicative 
-# of the biological variation between the replicate samples used in the experiment. From edgeR
-# user guide: âTypical values for the common BCV for datasets arising from well-controlled 
-# experiments are 0.4 for human data, 0.1 data on genetically identical model organisms or 0.01
-# for technical replicatesâ.
-bcv_design1 <- signif(sqrt(dispersions_design1$common.dispersion), 5)
-bcv_design1
+dispersionparameterfn <- function (designmatrix) {
+  dispersions_designpairwise <<- estimateDisp(norm_dge_expressed, designmatrix, robust=TRUE)
+  dispersions_designpairwise$common.dispersion
+  
+  # Note from above the value of the common negative binomial dispersion. The square-root of this
+  # value is called the biological coefficient of variation (BCV) and its magnitude is indicative
+  # of the biological variation between the replicate samples used in the experiment. From edgeR
+  # user guide: âTypical values for the common BCV for datasets arising from well-controlled
+  # experiments are 0.4 for human data, 0.1 data on genetically identical model organisms or 0.01
+  # for technical replicatesâ.
+  bcv_design1 <<- signif(sqrt(dispersions_designpairwise$common.dispersion), 5)
+  bcv_design1
+}
+
+dispersionparameterfn(designpairwise)
+
+
+
 
 ##########################################################################################
 ### DE contrasts: treatment versus control
 ##########################################################################################
-# fit genewise negative binomial GLMs for design1
-glmfit_design1 <- glmQLFit(dispersions_design1, design1)
+de_constrast_fn <<- function (designmatrix, dispersions, pair){
+  glmfit_design1 <<- glmQLFit(dispersions, designmatrix)
+  # genewise statistical tests can be performed for a given coefficient or coefficient contrast
+  qlf_design1 <<- glmQLFTest( glmfit_design1, coef = pair[2] )
+  # The function topTags can be called to extract the top n DE genes ranked by p-value or
+  # absolute log-fold change. Save all results by setting n to NULL. Use Benjamini-Hochberg (BH)
+  # method to adjust p-values for multiple testing. The output is set to be sorted by ordinary
+  # p-values. We do not provide a specified adjusted p-value cutoff now.
+  lrt_top_design1 <<- topTags(qlf_design1, adjust.method = "BH", sort.by = "PValue",
+                                p.value = 0.05, n=NULL)
+  row.names(lrt_top_design1$table) <- NULL
+  head(lrt_top_design1$table)
+  dim(lrt_top_design1$table)
+  
+  summary(decideTests(qlf_design1, lfc = log2(fold_change_cutoff_p_8), p.value = 0.05))
+  de_genes_all <<- lrt_top_design1$table[ lrt_top_design1$table$FDR < FDR_cutoff &
+                                                 ( abs(as.numeric(lrt_top_design1$table$logFC)) >
+                                                     log2(fold_change_cutoff_p_8) ), ]
+  head(de_genes_all)
+}
 
-# genewise statistical tests can be performed for a given coefficient or coefficient contrast
-qlf_design1_ca <- glmQLFTest( glmfit_design1, coef = "CA-MKK2_OX" )
-qlf_design1_mkk <- glmQLFTest( glmfit_design1, coef = "MKK2_OX" )
-
-# The function topTags can be called to extract the top n DE genes ranked by p-value or 
-# absolute log-fold change. Save all results by setting n to NULL. Use Benjamini-Hochberg (BH)
-# method to adjust p-values for multiple testing. The output is set to be sorted by ordinary
-# p-values. We do not provide a specified adjusted p-value cutoff now.
-lrt_top_design1_ca <- topTags(qlf_design1_ca, adjust.method = "BH", sort.by = "PValue",
-                           p.value = 0.05, n=NULL)
-row.names(lrt_top_design1_ca$table) <- NULL
-head(lrt_top_design1_ca$table)
-dim(lrt_top_design1_ca$table)
-# Trying to find dups - There are no DUPS here.
-length(unique(lrt_top_design1_ca$table$gene_id)) == nrow(lrt_top_design1_ca$table)
-
-### Repeating above for MKK2_OX
-lrt_top_design1_mkk <- topTags(qlf_design1_mkk, adjust.method = "BH", sort.by = "PValue",
-                              p.value = 0.05, n=NULL)
-row.names(lrt_top_design1_mkk$table) <- NULL
-head(lrt_top_design1_mkk$table)
-dim(lrt_top_design1_mkk$table)
-# Trying to find dups - There are no DUPS here.
-length(unique(lrt_top_design1_mkk$table$gene_id)) == nrow(lrt_top_design1_mkk$table)
-
-# summary of DE genes based only on adjusted p-value threshold
-summary(decideTests(qlf_design1_ca, p.value = 0.05, lfc = 0))
-summary(decideTests(qlf_design1_mkk, p.value = 0.05, lfc = 0))
-
-# This is the location I would change to change the fold change threshod, I believe.
-# Summary of DE genes based on adjusted p-value threshold and a 2 fold change threshold.
-# Note the numbers for up and down regulated genes have reduced.
-summary(decideTests(qlf_design1_ca, p.value = 0.05, lfc = log2(2)))
-summary(decideTests(qlf_design1_mkk, p.value = 0.05, lfc = log2(2)))
-
-# Instead of defining a hard cut-off for fold change, it would be better to select a value
-# based on the power of our experiment to detect changes in expression, which would be 
-# proportional to the sample size and affected by factors like biological variablity among
-# samples within groups. So, performing a power analylsis is useful.
-
-##########################################################################################
-### Power analysis
-# Use function rnapower from package RNASeqPower to perform a basic power analysis
-##########################################################################################
-
-# View help function by entering ?rnapower
-# The average depth of coverage for the transcript is one of the parameters required for 
-# rnapower function. This can be estimated as follows:
-# (# of sequenced bases) / (transcriptome size)
-# Sequenced bases is the number of reads x read length (twice that if paired-end).
-# An estimate of the transciptome size can be obtained from the GTF file by summing the
-# difference between the start and end of each annotated gene. So, depth of sequencing in the 
-# sample with the lowest library size will be:
-depth <- min( dge$samples$lib.size )*100*2 / sum( fusarium_gene_anno$end - fusarium_gene_anno$start )
-
-# Estimate power for a range of fold change values between 1 and 5 with other factors fixed
-power_analysis <- rnapower(depth, n=group_size, cv=bcv_design1, effect=seq(1, 5, by=0.1),
-                           alpha=0.05)
-
-plot(names(power_analysis), power_analysis, las=1,
-     xlab="Fold change", ylab="Power", main="Power analysis",
-     sub="[parameters: n=3; alpha=0.05; coverage=5X]")
-abline(v=4, h=0.9, col="red")
-abline(v=3.5, h=0.8, col="blue")
-
-# Note from the plot that fold changes of 3.5 can be detected at a power of 0.8, which is what we select 
-# here as our fold change threshold.
-# I should change my fold change threshold here.
-fold_change_cutoff=3.5
-
-# Define DE genes with these cut-offs
-summary(decideTests(qlf_design1_ca, lfc = log2(fold_change_cutoff), p.value = 0.05))
-de_genes_all_ca <- lrt_top_design1_ca$table[ lrt_top_design1_ca$table$FDR < FDR_cutoff &
-                                         ( abs(as.numeric(lrt_top_design1_ca$table$logFC)) >
-                                             log2(fold_change_cutoff) ), ]
-head(de_genes_all_ca)
-print(nrow(de_genes_all_ca))
-# Trying to check for dups. No dups here.
-length(unique(de_genes_all_ca$gene_id)) == nrow(de_genes_all_ca)
+de_constrast_fn(designpairwise, dispersions_designpairwise, c("wildtype", "CA-MKK2_OX"))
 
 
-summary(decideTests(qlf_design1_mkk, lfc = log2(fold_change_cutoff), p.value = 0.05))
-de_genes_all_mkk <- lrt_top_design1_mkk$table[ lrt_top_design1_mkk$table$FDR < FDR_cutoff &
-                                         ( abs(as.numeric(lrt_top_design1_mkk$table$logFC)) >
-                                             log2(fold_change_cutoff) ), ]
-head(de_genes_all_mkk)
-print(nrow(de_genes_all_mkk))
-# Trying to find dups. No dups here.
-length(unique(de_genes_all_mkk$gene_id)) == nrow(de_genes_all_mkk)
+
 
 ##########################################################################################
 ### Heat map
 # To visualize the expression differences among samples for the DE genes identified.
 ##########################################################################################
-jpeg("expression_differences_heatmap_camkk2ox_vs_wt.jpg", width = 1000, height = 9000)
-coolmap((log2cpm_expressed[ match( de_genes_all_ca$gene_id, row.names(log2cpm_expressed)),]), 
-        keysize = 1, cexRow= .9, margins = c(10,10))
-dev.off()
-jpeg("expression_differences_heatmap_mkk2ox_vs_wt.jpg", width = 1000, height = 3000)
-coolmap(( log2cpm_expressed[ match( de_genes_all_mkk$gene_id, row.names(log2cpm_expressed)),]), 
-        keysize = 1, cexRow= .9, margins = c(10,10))
-dev.off()
+# This is broken rn.
+heatmapfn <- function (genes, pair) {
+  head(genes)
+  pair[1]
+  pair[2]
+  jpeg("title", width = 1000, height = 9000)
+  coolmap((log2cpm_expressed[ match(genes$gene_id, row.names(log2cpm_expressed)),]),
+          keysize = 1, cexRow= .9, margins = c(10,10))
+  dev.off()
+}
+
+heatmapfn(de_genes_all, (c("wildtype", "CA-MKK2_OX")))
+
 
 
 ##########################################################################################
 ### Tests for over-represented GO and KEGG pathway terms
 # Performing gene ontology (GO) and KEGG pathway term enrichment tests on our lists of DE
-# genes will give us an idea of the kind of biological processes that the genes are involved 
+# genes will give us an idea of the kind of biological processes that the genes are involved
 # in. Basically the enrichment test is a modified Fisherâs exact test (hypergeometric test)
-# to determine GO or KEGG terms that are statistically over-represented in our set of DE 
+# to determine GO or KEGG terms that are statistically over-represented in our set of DE
 # genes compared to particular background set of genes (universe). The choice of the universe
-# is crucial and should include all genes that have a chance to be expressed. For our purpose, 
-# the universe is selected to be the set of all genes identified as expressed. There are 
+# is crucial and should include all genes that have a chance to be expressed. For our purpose,
+# the universe is selected to be the set of all genes identified as expressed. There are
 # several packages that perform these tests available on Bioconductor like GOstats or goana
 # and kegga functions available from package âlimmaâ that is already loaded as a dependency
-# of âedgeRâ or as web based tools like DAVID (https://david.ncifcrf.gov/) or Panther 
-# (http://pantherdb.org/). We test the enrichments seperately for up- and down-regulated 
+# of âedgeRâ or as web based tools like DAVID (https://david.ncifcrf.gov/) or Panther
+# (http://pantherdb.org/). We test the enrichments seperately for up- and down-regulated
 # genes.
 ##########################################################################################
 
-upregulated_genes_ca <- de_genes_all_ca$gene_id[ de_genes_all_ca$logFC>0 ]
-write.table( upregulated_genes_ca, file="upregulated_genes_ca-mkk2_ox_vs_wt.txt", col.names = F, row.names = F, quote=F)
-
-downregulated_genes_ca <- de_genes_all_ca$gene_id[ de_genes_all_ca$logFC<0 ]
-write.table( downregulated_genes_ca, file="downregulated_genes_ca-mkk2_ox_vs_wt.txt", col.names = F, row.names = F, quote=F)
-
-expressed_genes_ca <- dge_expressed$genes$gene_id # same as row.names(log2cpm_expressed)
-length(expressed_genes_ca)
-write.table( expressed_genes_ca, file="expressed_genes_ca-mkk2_ox_vs_wt.txt", col.names = F, row.names = F, quote=F)
-
-
-### Repeat
-upregulated_genes_mkk <- de_genes_all_mkk$gene_id[ de_genes_all_mkk$logFC>0 ]
-write.table( upregulated_genes_mkk, file="upregulated_genes_mkk2_ox_vs_wt.txt", col.names = F, row.names = F, quote=F)
-
-downregulated_genes_mkk <- de_genes_all_mkk$gene_id[ de_genes_all_mkk$logFC<0 ]
-write.table( downregulated_genes_mkk, file="downregulated_genes_mkk2_ox_vs_wt.txt", col.names = F, row.names = F, quote=F)
-
-expressed_genes_mkk <- dge_expressed$genes$gene_id # same as row.names(log2cpm_expressed)
-length(expressed_genes_mkk)
-write.table( expressed_genes_mkk, file="expressed_genes_mkk2_ox_vs_wt.txt", col.names = F, row.names = F, quote=F)
-
-# The above files are saved to rnaseq_analysis/de_analysis. Click Refresh in the Files tab on 
-# the bottom right panel if you do not see the files there). Export those files in zipped format
-# to your local machine by selecting them from the Files tab on the bottom right panel and 
-# clicking export (under More). Choose "Save as" option to save the exported files to a defined 
-# folder on your local machine.
-
-# Use those files to continue with overrepresentation analysis on http://pantherdb.org/
-# We test the enrichments seperately for up- and down-regulated genes and using the list of 
-# expressed genes as the background.
-
-
-
-
-
-### COMPARING CA_MKK2OX to MKK2OX
-##########################################################################################
-### Define design matrix
-##########################################################################################
-# convert treatment information to factors
-TREATMENT <- as.factor( sample_info$treatment )
-
-# Define reference as control so that all DE results will be interpreted as changes in
-# treatment with respect to control ( treament vs. control) samples.
-TREATMENT <- relevel(TREATMENT, ref = "CA-MKK2_OX")
-print(TREATMENT)
-
-# To test for differences between treatment and control while adjusting for any differences
-# between the batches, we add a term BATCH to the model defined as follows:
-# convert batch information to factors
-BATCH <- as.factor( sample_info$batch )
-
-# create design matrix without interaction term
-design1 <- model.matrix( ~ TREATMENT + BATCH )
-print(design1)
-
-# rename "TREATMENTtreatmentA" to "TREATMENTA" for simplicity
-colnames(design1)[2] <- "MKK2_OX"
-print(design1)
-
-##########################################################################################
-### Estimating dispersion parameters
-# A negative binomial GLM representing the design can be fitted to the read count data for
-# each gene using the function glmFit after first estimating the common, trended and gene-wise
-# negative binomial dispersions as shown below.
-##########################################################################################
-dispersions_design1 <- estimateDisp(norm_dge_expressed, design1, robust=TRUE)
-dispersions_design1$common.dispersion
-
-# Note from above the value of the common negative binomial dispersion. The square-root of this
-# value is called the biological coefficient of variation (BCV) and its magnitude is indicative 
-# of the biological variation between the replicate samples used in the experiment. From edgeR
-# user guide: âTypical values for the common BCV for datasets arising from well-controlled 
-# experiments are 0.4 for human data, 0.1 data on genetically identical model organisms or 0.01
-# for technical replicatesâ.
-bcv_design1 <- signif(sqrt(dispersions_design1$common.dispersion), 5)
-bcv_design1
-
-##########################################################################################
-### DE contrasts: treatment versus control
-##########################################################################################
-# fit genewise negative binomial GLMs for design1
-glmfit_design1 <- glmQLFit(dispersions_design1, design1)
-
-# genewise statistical tests can be performed for a given coefficient or coefficient contrast
-qlf_design1_mkk <- glmQLFTest( glmfit_design1, coef = "MKK2_OX" )
-
-# The function topTags can be called to extract the top n DE genes ranked by p-value or 
-# absolute log-fold change. Save all results by setting n to NULL. Use Benjamini-Hochberg (BH)
-# method to adjust p-values for multiple testing. The output is set to be sorted by ordinary
-# p-values. We do not provide a specified adjusted p-value cutoff now.
-lrt_top_design1_mkk <- topTags(qlf_design1_mkk, adjust.method = "BH", sort.by = "PValue",
-                               p.value = 0.05, n=NULL)
-row.names(lrt_top_design1_mkk$table) <- NULL
-head(lrt_top_design1_mkk$table)
-dim(lrt_top_design1_mkk$table)
-# Checking for dups. No dups found.
-length(unique(lrt_top_design1_mkk$table$gene_id)) == nrow(lrt_top_design1_mkk$table)
-
-# summary of DE genes based only on adjusted p-value threshold
-summary(decideTests(qlf_design1_mkk, p.value = 0.05, lfc = 0))
-
-# Summary of DE genes based on adjusted p-value threshold and a 2 fold change threshold.
-# Note the numbers for up and down regulated genes have reduced.
-summary(decideTests(qlf_design1_mkk, p.value = 0.05, lfc = log2(2)))
-
-# Instead of defining a hard cut-off for fold change, it would be better to select a value
-# based on the power of our experiment to detect changes in expression, which would be 
-# proportional to the sample size and affected by factors like biological variablity among
-# samples within groups. So, performing a power analylsis is useful.
-
-##########################################################################################
-### Power analysis
-# Use function rnapower from package RNASeqPower to perform a basic power analysis
-##########################################################################################
-
-# View help function by entering ?rnapower
-# The average depth of coverage for the transcript is one of the parameters required for 
-# rnapower function. This can be estimated as follows:
-# (# of sequenced bases) / (transcriptome size)
-# Sequenced bases is the number of reads x read length (twice that if paired-end).
-# An estimate of the transciptome size can be obtained from the GTF file by summing the
-# difference between the start and end of each annotated gene. So, depth of sequencing in the 
-# sample with the lowest library size will be:
-depth <- min( dge$samples$lib.size )*100*2 / sum( fusarium_gene_anno$end - fusarium_gene_anno$start )
-
-# Estimate power for a range of fold change values between 1 and 5 with other factors fixed
-power_analysis <- rnapower(depth, n=group_size, cv=bcv_design1, effect=seq(1, 5, by=0.1),
-                           alpha=0.05)
-
-plot(names(power_analysis), power_analysis, las=1,
-     xlab="Fold change", ylab="Power", main="Power analysis",
-     sub="[parameters: n=3; alpha=0.05; coverage=5X]")
-abline(v=4, h=0.9, col="red")
-abline(v=3.5, h=0.8, col="blue")
-
-# Note from the plot that fold changes of 3.5 can be detected at a power of 0.8, which is what we select 
-# here as our fold change threshold.
-fold_change_cutoff=3.5
-
-# Define DE genes with these cut-offs
-summary(decideTests(qlf_design1_mkk, lfc = log2(fold_change_cutoff), p.value = 0.05))
-de_genes_all_mkk <- lrt_top_design1_mkk$table[ lrt_top_design1_mkk$table$FDR < FDR_cutoff &
-                                                 ( abs(as.numeric(lrt_top_design1_mkk$table$logFC)) >
-                                                     log2(fold_change_cutoff) ), ]
-head(de_genes_all_mkk)
-print(nrow(de_genes_all_mkk))
-# Checking for dups. No dups here.
-length(unique(de_genes_all_mkk$gene_id)) == nrow(de_genes_all_mkk)
-
-##########################################################################################
-### Heat map
-# To visualize the expression differences among samples for the DE genes identified.
-##########################################################################################
-jpeg("expression_differences_heatmap_mkk2ox_vs_camkk2ox.jpg", width = 1000, height = 4000)
-coolmap(( log2cpm_expressed[ match( de_genes_all_mkk$gene_id, row.names(log2cpm_expressed)),]), 
-        cexRow= .9, margins = c(10,10), lhei=c(1,1), lwid=c(2,3.5), keysize=0.75)
-dev.off()
+gene_lists_fn<- function(genes, pair) {
+  comparison <- (paste(pair[2], "vs", pair[1],sep = ""))
+  upregulated_genes <<- genes$gene_id[ genes$logFC>0 ]
+  write.table( upregulated_genes, file=(paste("upregulated_genes", comparison, sep="")), col.names = F, row.names = F, quote=F)
+  
+  downregulated_genes <<- genes$gene_id[ genes$logFC<0 ]
+  write.table( downregulated_genes, file=(paste("downregulated_genes", comparison, sep="")), col.names = F, row.names = F, quote=F)
+}
 
 
 ##########################################################################################
-### Tests for over-represented GO and KEGG pathway terms
-# Performing gene ontology (GO) and KEGG pathway term enrichment tests on our lists of DE
-# genes will give us an idea of the kind of biological processes that the genes are involved 
-# in. Basically the enrichment test is a modified Fisherâs exact test (hypergeometric test)
-# to determine GO or KEGG terms that are statistically over-represented in our set of DE 
-# genes compared to particular background set of genes (universe). The choice of the universe
-# is crucial and should include all genes that have a chance to be expressed. For our purpose, 
-# the universe is selected to be the set of all genes identified as expressed. There are 
-# several packages that perform these tests available on Bioconductor like GOstats or goana
-# and kegga functions available from package âlimmaâ that is already loaded as a dependency
-# of âedgeRâ or as web based tools like DAVID (https://david.ncifcrf.gov/) or Panther 
-# (http://pantherdb.org/). We test the enrichments seperately for up- and down-regulated 
-# genes.
+### DGE List fn Complete
 ##########################################################################################
+dge_list_fn <- function (pair) {
+  create_design_matrix(pair)
+  dispersionparameterfn(designpairwise)
+  de_constrast_fn(designpairwise, dispersions_designpairwise, pair)
+  gene_lists_fn(de_genes_all, pair)
+}
 
-upregulated_genes_mkk <- de_genes_all_mkk$gene_id[ de_genes_all_mkk$logFC>0 ]
-write.table( upregulated_genes_mkk, file="upregulated_genes_mkk2ox_vs_camkk2ox.txt", col.names = F, row.names = F, quote=F)
 
-downregulated_genes_mkk <- de_genes_all_mkk$gene_id[ de_genes_all_mkk$logFC<0 ]
-write.table( downregulated_genes_mkk, file="downregulated_genes_mkk2ox_vs_camkk2ox.txt", col.names = F, row.names = F, quote=F)
+dge_list_fn(c("wildtype", "CA-MKK2_OX"))
+dge_list_fn(c("wildtype", "MKK2_OX"))
+dge_list_fn(c("CA-MKK2_OX", "MKK2_OX"))
+  
 
 ##########################################################################################
 ### Create a document for reference
 ##########################################################################################
 # Go to File tab above (within RStudio) and click Knit document. Choose output format HTML.
-# A report called de_analysis.html is created that is saved to the de_analysis folder and 
+# A report called de_analysis.html is created that is saved to the de_analysis folder and
 # also opens in a browser.
-# It would be useful to track the session info in the document as a refernce to software 
+# It would be useful to track the session info in the document as a refernce to software
 # used and their versions.
 sessionInfo()
 
@@ -832,12 +661,12 @@ sessionInfo()
 ### Copying your data to your local machine
 ##########################################################################################
 
-# In the biocluster terminal, issue the following command to change to home directory and 
+# In the biocluster terminal, issue the following command to change to home directory and
 # create a zipped file of the rnaseq_analysis folder:
 # (rnaseq) [bctraining145@biocomp-0-3 rnaseq_analysis]$ cd
 # (rnaseq) [bctraining145@biocomp-0-3 ~]$ zip -r rnaseq_analysis.zip rnaseq_analysis
 
-# Export the rnaseq_analysis.zip file (within home) to your local machine by selecting 
+# Export the rnaseq_analysis.zip file (within home) to your local machine by selecting
 # it from the Files tab on the bottom right panel and clicking export (under More). Choose
 # "Save as" option to save the exported file to a defined folder on your local machine.
 # Unzip the file and explore the contents in detail.
