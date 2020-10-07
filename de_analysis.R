@@ -109,6 +109,8 @@ library(RNASeqPower)
 # http://bioconductor.org/packages/release/bioc/html/RNASeqPower.html
 
 library(dplyr)
+
+library(calibrate)
 ##########################################################################################
 
 
@@ -580,19 +582,30 @@ print(nrow(de_genes_all))
 ### Volcano plots
 # To visualize log fold changes for different genes.
 ##########################################################################################
+# Code based off https://www.r-bloggers.com/2014/05/using-volcano-plots-in-r-to-visualize-microarray-and-rna-seq-results/
 head(de_genes_all)
-#lmFit()
-#volcanoplot(de_genes_all, coef = 2)
+with(de_genes_all, plot(logFC, -log10(PValue), pch=20, main="Volcano plot CAMKK2OX vs WT", xlim=c(-7,5)))
+# Add colored points: red if -log10(PValue)>8, orange if log2FC>2, green if both)
+with(subset(de_genes_all, -log10(PValue)>7 ), points(logFC, -log10(PValue), pch=20, col="red"))
+with(subset(de_genes_all, abs(logFC)>2), points(logFC, -log10(PValue), pch=20, col="orange"))
+with(subset(de_genes_all, -log10(PValue)>7 & abs(logFC)>2), points(logFC, -log10(PValue), pch=20, col="green"))
 
+library(calibrate)
+# Trying to add labels
+# Shortening gene_id
+de_genes_all_shortened_gene_id <- de_genes_all %>% mutate_all(~gsub("gene-", "", .))
+# TODO: Someone please explain to me why this isn't working.
+# with(subset(de_genes_all, -log10(PValue)>7 & abs(logFC)>2), textxy(logFC, -log10(PValue), labs=gene_id, cex=.8))
+with(subset(de_genes_all, -log10(PValue)>7 & abs(logFC)>2), textxy(logFC, -log10(PValue), labs=gene_id, cex=.6))
 ##########################################################################################
 ### Heat map
 # To visualize the expression differences among samples for the DE genes identified.
 ##########################################################################################
-# So this is broken again, for some reason.
-# png("heatmap_ca-mkk2ox_vs_wt", width = 1000, height = 9000)
+# TODO: So this is broken again, for some reason.
+png("heatmap_ca-mkk2ox_vs_wt", width = 1000, height = 9000)
 coolmap((log2cpm_expressed[ match(de_genes_all$gene_id, row.names(log2cpm_expressed)),]),
         keysize = 1, cexRow= .9, margins = c(10,10))
-# dev.off()
+dev.off()
 
 
 
@@ -638,7 +651,11 @@ write.table( expressed_genes, file="expressed_genes_camkk2ox_vs_wt.txt", col.nam
 
 
 
-
+# TODO: Why am I getting such a small list of significant dge genes for the following two
+# comparisons?
+# This problem only happens when I try to remove the 3rd treatment... But if that's the problem
+# why is it not evident in the first comparison?
+# TODO: Volcano plots for the following two comparisons.
 ### COMPARISON OF MKK2OX to wildtype
 ##########################################################################################
 ### Statistical modelling of data and tests for DE
@@ -758,10 +775,10 @@ fold_change_cutoff_2=2
 fold_change_cutoff_test_super_low=0.5
 
 # Define DE genes with these cut-offs
-summary(decideTests(qlf_design1, lfc = log2(fold_change_cutoff_p_8_mkk_vs_wt), p.value = 0.05))
+summary(decideTests(qlf_design1, lfc = log2(fold_change_cutoff_test_super_low), p.value = 0.05))
 de_genes_all <- lrt_top_design1$table[ lrt_top_design1$table$FDR < FDR_cutoff &
                                          ( abs(as.numeric(lrt_top_design1$table$logFC)) >
-                                             log2(fold_change_cutoff_p_8_mkk_vs_wt) ), ]
+                                             log2(fold_change_cutoff_test_super_low) ), ]
 head(de_genes_all)
 print(nrow(de_genes_all))
 
