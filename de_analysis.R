@@ -55,7 +55,7 @@
 # The code below will combine the path to your home directory to the path to the folder
 # de_analysis and save it to a variable
 # de_analysis_dir <- paste0( Sys.getenv("HOME"), "/rnaseq_analysis/de_analysis/")
-de_analysis_dir <- paste0( Sys.getenv("HOME"), "/home/AAFC-AAC/chengal/R/x86_64-pc-linux-gnu-library/RNA-Seq")
+de_analysis_dir <- paste0( Sys.getenv("HOME"), "/R/x86_64-pc-linux-gnu-library/RNA-Seq")
 
 # Print that variable
 print(de_analysis_dir)
@@ -64,7 +64,7 @@ print(de_analysis_dir)
 getwd()
 
 # Set your working directory to the path defined and stored in de_analysis_dir
-# setwd(de_analysis_dir)
+setwd(de_analysis_dir)
 
 ##########################################################################################
 
@@ -310,9 +310,11 @@ print(dge) # The list has 3 elements: counts, samples and genes
 summary(dge$samples$lib.size)
 # View barplot of the library sizes (in millions) and note the sample with the lowest or 
 # highest library size
-par(mar = c(11, 8, 6, 5))
-barplot(dge$samples$lib.size/1e6, ylab="Number of sequenced reads (in millions)",
-        las=2, names=row.names( dge$samples))
+png('sample_sizes.png', width = 1000,height = 800)
+par(mar = c(10, 10, 10, 5), mgp = c(7, 1, 0))
+barplot(dge$samples$lib.size/1e6, ylab="Number of sequenced reads (in millions)", xlab = "Sample", 
+        main = "Sample Sizes", las=2, names=row.names( dge$samples), cex.names = 0.9)
+dev.off()
 
 ##########################################################################################
 
@@ -424,11 +426,13 @@ plot( hclust_object, las=1 )
 hclust_dendrogram <- as.dendrogram( hclust_object )
 nodePar <- list( cex = 0.7, lab.cex = 0.8, pch = c(NA, 19), col = "blue")
 edgePar <- list(col = 2:3, lwd = 2:1)
-par(mgp=c(6,1,0))  
+png('cluster_dendogram.png', width = 800,height = 800)
+par(mar = c(10,5,5,2), mgp=c(6,1,0))  
 plot( hclust_dendrogram, nodePar = nodePar, edgePar = edgePar,
-      las=1, cex.main=1, cex.sub=0.8, cex.axis=0.8,
+      las=1, cex.main=1, cex.sub=0.9, cex.axis=0.9,
       main="Hierarchical clustering dendrogram",
       sub=paste("distance measure=euclidean", "agglomeration method=ward.D2", sep = "\n"))
+dev.off()
 
 # MDS plots
 # Quote from the edgeR user guide: "The function plotMDS draws a multi-dimensional scaling plot of 
@@ -439,11 +443,15 @@ plot( hclust_dendrogram, nodePar = nodePar, edgePar = edgePar,
 # The number of top genes used to calculate pairwise distances can be specified, which by default
 # is 500. Also, by default, the first and second principal components (PC) are plotted. You can 
 # set it to any pair of PCs but this function is limited to plotting on a 2 dimensional scatterplot.
-par(cex=0.7)
+par(cex=0.7, mar = c(5,5,5,5))
+png('MDS_treatment.png', width = 800,height = 600)
 plotMDS(norm_dge_expressed, main="Coloured by TREATMENT", las=1,
         col=rainbow( length(unique(sample_info$treatment)))[as.factor(sample_info$treatment) ])
+dev.off()
+png('MDS_batch.png', width = 800,height = 600)
 plotMDS(norm_dge_expressed, main="Coloured by BATCH", las=1,
         col=rainbow( length(unique(sample_info$batch)))[as.factor(sample_info$batch) ])
+dev.off()
 ##########################################################################################
 
 
@@ -555,12 +563,14 @@ depth <- min( dge$samples$lib.size )*100*2 / sum( fusarium_gene_anno$end - fusar
 power_analysis <- rnapower(depth, n=group_size, cv=bcv_design1, effect=seq(1, 5, by=0.1),
                            alpha=0.05)
 
+png('CAMKK2OX_vs_WT_power.png', width = 800,height = 600)
 par(mar=c(8,8,8,4))
 plot(names(power_analysis), power_analysis, las=1,
-     xlab="Fold change", ylab="Power", main="Power analysis",
+     xlab="Fold change", ylab="Power", main="Power analysis CAMKK2OX vs WT",
      sub="[parameters: n=3; alpha=0.05; coverage=5X]")
 abline(v=1.9, h=0.9, col="red")
 abline(v=1.75, h=0.8, col="blue")
+dev.off()
 
 # Note from the plot that fold changes of 1.6 can be detected at a power of 0.8
 # Note from the plot that fold changes of 1.75 can be detected at a power of 0.9
@@ -568,7 +578,6 @@ fold_change_cutoff_p_8_camkk2_vs_wt=1.75
 fold_change_cutoff_p_9_camkk2_vs_wt=1.9
 fold_change_cutoff_3.5=3.5
 fold_change_cutoff_2=2
-fold_change_cutoff_test_super_low=0.5
 
 # Define DE genes with these cut-offs
 summary(decideTests(qlf_design1, lfc = log2(fold_change_cutoff_p_8_camkk2_vs_wt), p.value = 0.05))
@@ -579,12 +588,23 @@ head(de_genes_all)
 print(nrow(de_genes_all))
 
 ##########################################################################################
+### Heat map
+# To visualize the expression differences among samples for the DE genes identified.
+##########################################################################################
+png('CAMKK2OX_vs_WT_heatmap.png', width = 1000,height = 10000)
+par(mar= c(10,10,10,10))
+coolmap((log2cpm_expressed[ match(de_genes_all$gene_id, row.names(log2cpm_expressed)),]),
+        keysize = 1, cexRow= .9, margins = c(10,10), main="Heat Map CAMKK2OX vs WT")
+dev.off()
+
+
+##########################################################################################
 ### Volcano plots
 # To visualize log fold changes for different genes.
 ##########################################################################################
 # Code based off https://www.r-bloggers.com/2014/05/using-volcano-plots-in-r-to-visualize-microarray-and-rna-seq-results/
 head(de_genes_all)
-with(de_genes_all, plot(logFC, -log10(PValue), pch=20, main="Volcano plot CAMKK2OX vs WT", xlim=c(-7,5)))
+with(de_genes_all, plot(logFC, -log10(PValue), pch=20, main="Volcano Plot CAMKK2OX vs WT", xlim=c(-7,5)))
 # Add colored points: red if -log10(PValue)>8, orange if log2FC>2, green if both)
 with(subset(de_genes_all, -log10(PValue)>7 ), points(logFC, -log10(PValue), pch=20, col="red"))
 with(subset(de_genes_all, abs(logFC)>2), points(logFC, -log10(PValue), pch=20, col="orange"))
@@ -593,22 +613,8 @@ with(subset(de_genes_all, -log10(PValue)>7 & abs(logFC)>2), points(logFC, -log10
 library(calibrate)
 # Trying to add labels
 # Shortening gene_id
-de_genes_all_shortened_gene_id <- de_genes_all %>% mutate_all(~gsub("gene-", "", .))
-# TODO: Someone please explain to me why this isn't working.
-# with(subset(de_genes_all, -log10(PValue)>7 & abs(logFC)>2), textxy(logFC, -log10(PValue), labs=gene_id, cex=.8))
+de_genes_all<- de_genes_all %>% mutate_at(~gsub("gene-", "", .), .vars = 1)
 with(subset(de_genes_all, -log10(PValue)>7 & abs(logFC)>2), textxy(logFC, -log10(PValue), labs=gene_id, cex=.6))
-##########################################################################################
-### Heat map
-# To visualize the expression differences among samples for the DE genes identified.
-##########################################################################################
-# TODO: So this is broken again, for some reason.
-png("heatmap_ca-mkk2ox_vs_wt", width = 1000, height = 9000)
-coolmap((log2cpm_expressed[ match(de_genes_all$gene_id, row.names(log2cpm_expressed)),]),
-        keysize = 1, cexRow= .9, margins = c(10,10))
-dev.off()
-
-
-
 
 ##########################################################################################
 ### Tests for over-represented GO and KEGG pathway terms
@@ -626,15 +632,17 @@ dev.off()
 # genes.
 ##########################################################################################
 
-upregulated_genes <- de_genes_all$gene_id[ de_genes_all$logFC>0 ]
-write.table( upregulated_genes, file="upregulated_genes_camkk2ox_vs_wt.txt", col.names = F, row.names = F, quote=F)
+de_genes_all <- de_genes_all[ -c(2:6, 8:11) ]
 
-downregulated_genes <- de_genes_all$gene_id[ de_genes_all$logFC<0 ]
-write.table( downregulated_genes, file="downregulated_genes_camkk2ox_vs_wt.txt", col.names = F, row.names = F, quote=F)
+upregulated_genes <- filter(de_genes_all, de_genes_all$logFC>0)
+write.table( upregulated_genes, file="CAMKK2OX_vs_WT_upregulated.txt", col.names = T, row.names = F, quote=F)
+
+downregulated_genes <- filter(de_genes_all, de_genes_all$logFC<0)
+write.table( downregulated_genes, file="CAMKK2OX_vs_WT_downregulated.txt", col.names = T, row.names = F, quote=F)
 
 expressed_genes <- dge_expressed$genes$gene_id # same as row.names(log2cpm_expressed)
 length(expressed_genes)
-write.table( expressed_genes, file="expressed_genes_camkk2ox_vs_wt.txt", col.names = F, row.names = F, quote=F)
+write.table( expressed_genes, file="CAMKK2OX_vs_WT_expressed.txt", col.names = T, row.names = F, quote=F)
 
 
 # The above files are saved to rnaseq_analysis/de_analysis. Click Refresh in the Files tab on 
@@ -759,12 +767,15 @@ depth <- min( dge$samples$lib.size )*100*2 / sum( fusarium_gene_anno$end - fusar
 power_analysis <- rnapower(depth, n=group_size, cv=bcv_design1, effect=seq(1, 5, by=0.1),
                            alpha=0.05)
 
+png('MKK2OX_vs_WT_power.png', width = 800,height = 600)
 par(mar=c(8,8,8,4))
 plot(names(power_analysis), power_analysis, las=1,
-     xlab="Fold change", ylab="Power", main="Power analysis",
+     xlab="Fold change", ylab="Power", main="Power analysis MKK2OX vs WT",
      sub="[parameters: n=3; alpha=0.05; coverage=5X]")
 abline(v=2.35, h=0.9, col="red")
 abline(v=2.1, h=0.8, col="blue")
+dev.off()
+
 
 # Note from the plot that fold changes of 1.6 can be detected at a power of 0.8
 # Note from the plot that fold changes of 1.75 can be detected at a power of 0.9
@@ -775,10 +786,10 @@ fold_change_cutoff_2=2
 fold_change_cutoff_test_super_low=0.5
 
 # Define DE genes with these cut-offs
-summary(decideTests(qlf_design1, lfc = log2(fold_change_cutoff_test_super_low), p.value = 0.05))
+summary(decideTests(qlf_design1, lfc = log2(fold_change_cutoff_p_8_mkk_vs_wt), p.value = 0.05))
 de_genes_all <- lrt_top_design1$table[ lrt_top_design1$table$FDR < FDR_cutoff &
                                          ( abs(as.numeric(lrt_top_design1$table$logFC)) >
-                                             log2(fold_change_cutoff_test_super_low) ), ]
+                                             log2(fold_change_cutoff_p_8_mkk_vs_wt) ), ]
 head(de_genes_all)
 print(nrow(de_genes_all))
 
@@ -786,8 +797,31 @@ print(nrow(de_genes_all))
 ### Heat map
 # To visualize the expression differences among samples for the DE genes identified.
 ##########################################################################################
-coolmap( log2cpm_expressed[ match( de_genes_all$gene_id, row.names(log2cpm_expressed)),] )
+png('MKK2OX_vs_WT_heatmap.png', width = 700,height = 1000)
+par(mar= c(15,15,15,15))
+coolmap((log2cpm_expressed[ match(de_genes_all$gene_id, row.names(log2cpm_expressed)),]),
+        keysize = 1, cexRow= .9, margins = c(10,10), main="Heat Map MKK2OX vs WT")
+dev.off()
 
+
+
+##########################################################################################
+### Volcano plots
+# To visualize log fold changes for different genes.
+##########################################################################################
+# Code based off https://www.r-bloggers.com/2014/05/using-volcano-plots-in-r-to-visualize-microarray-and-rna-seq-results/
+head(de_genes_all)
+with(de_genes_all, plot(logFC, -log10(PValue), pch=20, main="Volcano Plot MKK2OX vs WT", xlim=c(-7,5)))
+# Add colored points: red if -log10(PValue)>8, orange if log2FC>2, green if both)
+with(subset(de_genes_all, -log10(PValue)>7 ), points(logFC, -log10(PValue), pch=20, col="red"))
+with(subset(de_genes_all, abs(logFC)>2), points(logFC, -log10(PValue), pch=20, col="orange"))
+with(subset(de_genes_all, -log10(PValue)>7 & abs(logFC)>2), points(logFC, -log10(PValue), pch=20, col="green"))
+
+library(calibrate)
+# Trying to add labels
+# Shortening gene_id
+de_genes_all<- de_genes_all %>% mutate_at(~gsub("gene-", "", .), .vars = 1)
+with(subset(de_genes_all, -log10(PValue)>7 & abs(logFC)>2), textxy(logFC, -log10(PValue), labs=gene_id, cex=.6))
 
 ##########################################################################################
 ### Tests for over-represented GO and KEGG pathway terms
@@ -804,16 +838,17 @@ coolmap( log2cpm_expressed[ match( de_genes_all$gene_id, row.names(log2cpm_expre
 # (http://pantherdb.org/). We test the enrichments seperately for up- and down-regulated 
 # genes.
 ##########################################################################################
+de_genes_all <- de_genes_all[ -c(2:6, 8:11) ]
 
-upregulated_genes <- de_genes_all$gene_id[ de_genes_all$logFC>0 ]
-write.table( upregulated_genes, file="upregulated_genes_mkk2ox_vs_wt.txt", col.names = F, row.names = F, quote=F)
+upregulated_genes <- filter(de_genes_all, de_genes_all$logFC>0)
+write.table( upregulated_genes, file="MKK2OX_vs_WT_upregulated.txt", col.names = T, row.names = F, quote=F)
 
-downregulated_genes <- de_genes_all$gene_id[ de_genes_all$logFC<0 ]
-write.table( downregulated_genes, file="downregulated_genes_mkk20x_vs_wt.txt", col.names = F, row.names = F, quote=F)
+downregulated_genes <- filter(de_genes_all, de_genes_all$logFC<0)
+write.table( downregulated_genes, file="MKK2OX_vs_WT_downregulated.txt", col.names = T, row.names = F, quote=F)
 
 expressed_genes <- dge_expressed$genes$gene_id # same as row.names(log2cpm_expressed)
 length(expressed_genes)
-write.table( expressed_genes, file="expressed_genes_mkk2ox_vs_wt.txt", col.names = F, row.names = F, quote=F)
+write.table( expressed_genes, file="MKK2OX_vs_WT_expressed.txt", col.names = F, row.names = F, quote=F)
 
 
 # The above files are saved to rnaseq_analysis/de_analysis. Click Refresh in the Files tab on 
@@ -933,12 +968,14 @@ depth <- min( dge$samples$lib.size )*100*2 / sum( fusarium_gene_anno$end - fusar
 power_analysis <- rnapower(depth, n=group_size, cv=bcv_design1, effect=seq(1, 5, by=0.1),
                            alpha=0.05)
 
+png('MKK2OX_vs_CAMKK2OX_power.png', width = 800,height = 600)
 par(mar=c(8,8,8,4))
 plot(names(power_analysis), power_analysis, las=1,
-     xlab="Fold change", ylab="Power", main="Power analysis",
+     xlab="Fold change", ylab="Power", main="Power analysis MKK2OX vs CAMKK2OX",
      sub="[parameters: n=3; alpha=0.05; coverage=5X]")
 abline(v=2.35, h=0.9, col="red")
 abline(v=2.1, h=0.8, col="blue")
+dev.off()
 
 # Note from the plot that fold changes of 1.6 can be detected at a power of 0.8
 # Note from the plot that fold changes of 1.75 can be detected at a power of 0.9
@@ -960,8 +997,29 @@ print(nrow(de_genes_all))
 ### Heat map
 # To visualize the expression differences among samples for the DE genes identified.
 ##########################################################################################
-coolmap( log2cpm_expressed[ match( de_genes_all$gene_id, row.names(log2cpm_expressed)),] )
+png('MKK2OX_vs_CAMKK2OX_heatmap.png', width = 600,height = 800)
+coolmap((log2cpm_expressed[ match(de_genes_all$gene_id, row.names(log2cpm_expressed)),]),
+        keysize = 1, cexRow= .9, margins = c(10,10), main="Heat Map MKK2OX vs CAMKK2OX")
+dev.off()
 
+
+##########################################################################################
+### Volcano plots
+# To visualize log fold changes for different genes.
+##########################################################################################
+# Code based off https://www.r-bloggers.com/2014/05/using-volcano-plots-in-r-to-visualize-microarray-and-rna-seq-results/
+head(de_genes_all)
+with(de_genes_all, plot(logFC, -log10(PValue), pch=20, main="Volcano Plot MKK2OX vs CAMKK2OX", xlim=c(-7,5)))
+# Add colored points: red if -log10(PValue)>8, orange if log2FC>2, green if both)
+with(subset(de_genes_all, -log10(PValue)>7 ), points(logFC, -log10(PValue), pch=20, col="red"))
+with(subset(de_genes_all, abs(logFC)>2), points(logFC, -log10(PValue), pch=20, col="orange"))
+with(subset(de_genes_all, -log10(PValue)>7 & abs(logFC)>2), points(logFC, -log10(PValue), pch=20, col="green"))
+
+library(calibrate)
+# Trying to add labels
+# Shortening gene_id
+de_genes_all<- de_genes_all %>% mutate_at(~gsub("gene-", "", .), .vars = 1)
+with(subset(de_genes_all, -log10(PValue)>7 & abs(logFC)>2), textxy(logFC, -log10(PValue), labs=gene_id, cex=.6))
 
 ##########################################################################################
 ### Tests for over-represented GO and KEGG pathway terms
@@ -978,16 +1036,17 @@ coolmap( log2cpm_expressed[ match( de_genes_all$gene_id, row.names(log2cpm_expre
 # (http://pantherdb.org/). We test the enrichments seperately for up- and down-regulated 
 # genes.
 ##########################################################################################
+de_genes_all <- de_genes_all[ -c(2:6, 8:11) ]
 
-upregulated_genes <- de_genes_all$gene_id[ de_genes_all$logFC>0 ]
-write.table( upregulated_genes, file="upregulated_genes_mkk2ox_vs_camkk2ox.txt", col.names = F, row.names = F, quote=F)
+upregulated_genes <- filter(de_genes_all, de_genes_all$logFC>0)
+write.table( upregulated_genes, file="MKK2OX_vs_CAMKK2OX_upregulated.txt", col.names = T, row.names = F, quote=F)
 
-downregulated_genes <- de_genes_all$gene_id[ de_genes_all$logFC<0 ]
-write.table( downregulated_genes, file="downregulated_genes_mkk2ox_vs_camkk2ox.txt", col.names = F, row.names = F, quote=F)
+downregulated_genes <- filter(de_genes_all, de_genes_all$logFC<0)
+write.table( downregulated_genes, file="MKK2OX_vs_CAMKK2OX_downregulated.txt", col.names = T, row.names = F, quote=F)
 
 expressed_genes <- dge_expressed$genes$gene_id # same as row.names(log2cpm_expressed)
 length(expressed_genes)
-write.table( expressed_genes, file="expressed_genes_mkk2ox_vs_camkk2ox.txt", col.names = F, row.names = F, quote=F)
+write.table( expressed_genes, file="MKK2OX_vs_CAMKK2OX_expressed.txt", col.names = F, row.names = F, quote=F)
 
 
 # The above files are saved to rnaseq_analysis/de_analysis. Click Refresh in the Files tab on 
