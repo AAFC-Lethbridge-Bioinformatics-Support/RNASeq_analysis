@@ -491,18 +491,18 @@ print(TREATMENT)
 BATCH <- as.factor( sample_info$batch )
 
 # create design matrix without interaction term
-design1 <- model.matrix( ~ TREATMENT + BATCH )
-print(design1)
+design1a <- model.matrix( ~ TREATMENT + BATCH )
+print(design1a)
 
 controlcolstring <- "(Intercept)"
-design1 <- design1[, c(controlcolstring, "TREATMENTCA-MKK2_OX", "BATCH2", "BATCH3")]
-print(design1)
+design1b <- design1a[, c(controlcolstring, "TREATMENTCA-MKK2_OX", "BATCH2", "BATCH3")]
+print(design1b)
 
-colnames(design1)[2] <- "CA-MKK2_OX"
-print(design1)
+colnames(design1b)[2] <- "CA-MKK2_OX"
+print(design1b)
 
-dispersions_design1 <- estimateDisp(norm_dge_expressed, design1, robust=TRUE)
-dispersions_design1$common.dispersion
+dispersions_design1b <- estimateDisp(norm_dge_expressed, design1b, robust=TRUE)
+dispersions_design1b$common.dispersion
 
 # Note from above the value of the common negative binomial dispersion. The square-root of this
 # value is called the biological coefficient of variation (BCV) and its magnitude is indicative 
@@ -510,34 +510,34 @@ dispersions_design1$common.dispersion
 # user guide: “Typical values for the common BCV for datasets arising from well-controlled 
 # experiments are 0.4 for human data, 0.1 data on genetically identical model organisms or 0.01
 # for technical replicates”.
-bcv_design1 <- signif(sqrt(dispersions_design1$common.dispersion), 5)
-bcv_design1
+bcv_design1b <- signif(sqrt(dispersions_design1b$common.dispersion), 5)
+bcv_design1b
 
 ##########################################################################################
 ### DE contrasts: treatment versus control
 ##########################################################################################
 # fit genewise negative binomial GLMs for design1
-glmfit_design1 <- glmQLFit(dispersions_design1, design1)
+glmfit_design1b <- glmQLFit(dispersions_design1b, design1b)
 
 # genewise statistical tests can be performed for a given coefficient or coefficient contrast
-qlf_design1 <- glmQLFTest( glmfit_design1, coef = "CA-MKK2_OX" )
+qlf_design1b <- glmQLFTest( glmfit_design1b, coef = "CA-MKK2_OX" )
 
 # The function topTags can be called to extract the top n DE genes ranked by p-value or 
 # absolute log-fold change. Save all results by setting n to NULL. Use Benjamini-Hochberg (BH)
 # method to adjust p-values for multiple testing. The output is set to be sorted by ordinary
 # p-values. We do not provide a specified adjusted p-value cutoff now.
-lrt_top_design1 <- topTags(qlf_design1, adjust.method = "BH", sort.by = "PValue",
+lrt_top_design1b <- topTags(qlf_design1b, adjust.method = "BH", sort.by = "PValue",
                            p.value = 0.05, n=NULL)
-row.names(lrt_top_design1$table) <- NULL
-head(lrt_top_design1$table)
-dim(lrt_top_design1$table)
+row.names(lrt_top_design1b$table) <- NULL
+head(lrt_top_design1b$table)
+dim(lrt_top_design1b$table)
 
 # summary of DE genes based only on adjusted p-value threshold
-summary(decideTests(qlf_design1, p.value = 0.05, lfc = 0))
+summary(decideTests(qlf_design1b, p.value = 0.05, lfc = 0))
 
 # Summary of DE genes based on adjusted p-value threshold and a 2 fold change threshold.
 # Note the numbers for up and down regulated genes have reduced.
-summary(decideTests(qlf_design1, p.value = 0.05, lfc = log2(2)))
+summary(decideTests(qlf_design1b, p.value = 0.05, lfc = log2(2)))
 
 # Instead of defining a hard cut-off for fold change, it would be better to select a value
 # based on the power of our experiment to detect changes in expression, which would be 
@@ -560,7 +560,7 @@ summary(decideTests(qlf_design1, p.value = 0.05, lfc = log2(2)))
 depth <- min( dge$samples$lib.size )*100*2 / sum( fusarium_gene_anno$end - fusarium_gene_anno$start )
 
 # Estimate power for a range of fold change values between 1 and 5 with other factors fixed
-power_analysis <- rnapower(depth, n=group_size, cv=bcv_design1, effect=seq(1, 5, by=0.1),
+power_analysis <- rnapower(depth, n=group_size, cv=bcv_design1b, effect=seq(1, 5, by=0.1),
                            alpha=0.05)
 
 png('CAMKK2OX_vs_WT_power.png', width = 800,height = 600)
@@ -580,12 +580,12 @@ fold_change_cutoff_3.5=3.5
 fold_change_cutoff_2=2
 
 # Define DE genes with these cut-offs
-summary(decideTests(qlf_design1, lfc = log2(fold_change_cutoff_p_8_camkk2_vs_wt), p.value = 0.05))
-de_genes_all <- lrt_top_design1$table[ lrt_top_design1$table$FDR < FDR_cutoff &
-                                         ( abs(as.numeric(lrt_top_design1$table$logFC)) >
+summary(decideTests(qlf_design1b, lfc = log2(fold_change_cutoff_p_8_camkk2_vs_wt), p.value = 0.05))
+de_camkk2ox_vs_wt <- lrt_top_design1b$table[ lrt_top_design1b$table$FDR < FDR_cutoff &
+                                         ( abs(as.numeric(lrt_top_design1b$table$logFC)) >
                                              log2(fold_change_cutoff_p_8_camkk2_vs_wt) ), ]
-head(de_genes_all)
-print(nrow(de_genes_all))
+head(de_camkk2ox_vs_wt)
+print(nrow(de_camkk2ox_vs_wt))
 
 ##########################################################################################
 ### Heat map
@@ -593,7 +593,7 @@ print(nrow(de_genes_all))
 ##########################################################################################
 png('CAMKK2OX_vs_WT_heatmap.png', width = 1000,height = 10000)
 par(mar= c(10,10,10,10))
-coolmap((log2cpm_expressed[ match(de_genes_all$gene_id, row.names(log2cpm_expressed)),]),
+coolmap((log2cpm_expressed[ match(de_camkk2ox_vs_wt$gene_id, row.names(log2cpm_expressed)),]),
         keysize = 1, cexRow= .9, margins = c(10,10), main="Heat Map CAMKK2OX vs WT")
 dev.off()
 
@@ -603,18 +603,18 @@ dev.off()
 # To visualize log fold changes for different genes.
 ##########################################################################################
 # Code based off https://www.r-bloggers.com/2014/05/using-volcano-plots-in-r-to-visualize-microarray-and-rna-seq-results/
-head(de_genes_all)
-with(de_genes_all, plot(logFC, -log10(PValue), pch=20, main="Volcano Plot CAMKK2OX vs WT", xlim=c(-7,5)))
+head(de_camkk2ox_vs_wt)
+with(de_camkk2ox_vs_wt, plot(logFC, -log10(PValue), pch=20, main="Volcano Plot CAMKK2OX vs WT", xlim=c(-7,5)))
 # Add colored points: red if -log10(PValue)>8, orange if log2FC>2, green if both)
-with(subset(de_genes_all, -log10(PValue)>7 ), points(logFC, -log10(PValue), pch=20, col="red"))
-with(subset(de_genes_all, abs(logFC)>2), points(logFC, -log10(PValue), pch=20, col="orange"))
-with(subset(de_genes_all, -log10(PValue)>7 & abs(logFC)>2), points(logFC, -log10(PValue), pch=20, col="green"))
+with(subset(de_camkk2ox_vs_wt, -log10(PValue)>7 ), points(logFC, -log10(PValue), pch=20, col="red"))
+with(subset(de_camkk2ox_vs_wt, abs(logFC)>2), points(logFC, -log10(PValue), pch=20, col="orange"))
+with(subset(de_camkk2ox_vs_wt, -log10(PValue)>7 & abs(logFC)>2), points(logFC, -log10(PValue), pch=20, col="green"))
 
 library(calibrate)
 # Trying to add labels
 # Shortening gene_id
-de_genes_all<- de_genes_all %>% mutate_at(~gsub("gene-", "", .), .vars = 1)
-with(subset(de_genes_all, -log10(PValue)>7 & abs(logFC)>2), textxy(logFC, -log10(PValue), labs=gene_id, cex=.6))
+de_camkk2ox_vs_wt<- de_camkk2ox_vs_wt %>% mutate_at(~gsub("gene-", "", .), .vars = 1)
+with(subset(de_camkk2ox_vs_wt, -log10(PValue)>7 & abs(logFC)>2), textxy(logFC, -log10(PValue), labs=gene_id, cex=.6))
 
 ##########################################################################################
 ### Tests for over-represented GO and KEGG pathway terms
@@ -632,17 +632,19 @@ with(subset(de_genes_all, -log10(PValue)>7 & abs(logFC)>2), textxy(logFC, -log10
 # genes.
 ##########################################################################################
 
-de_genes_all <- de_genes_all[ -c(2:6, 8:11) ]
+upregulated_camkk2ox_vs_wt_ids <- de_camkk2ox_vs_wt$gene_id[ de_camkk2ox_vs_wt$logFC>0 ]
+write.table( upregulated_camkk2ox_vs_wt_ids, file="CAMKK2OX_vs_WT_upregulated_ids.txt", col.names = F, row.names = F, quote=F)
+upregulated_camkk2ox_vs_wt_all_info <- filter(de_camkk2ox_vs_wt, de_camkk2ox_vs_wt$logFC>0)
+write.table( upregulated_camkk2ox_vs_wt_all_info, file="CAMKK2OX_vs_WT_upregulated_all_info.txt", col.names = T, row.names = F, quote=F)
 
-upregulated_genes <- filter(de_genes_all, de_genes_all$logFC>0)
-write.table( upregulated_genes, file="CAMKK2OX_vs_WT_upregulated.txt", col.names = T, row.names = F, quote=F)
+downregulated_camkk2ox_vs_wt_ids <- de_camkk2ox_vs_wt$gene_id[ de_camkk2ox_vs_wt$logFC<0 ]
+write.table( downregulated_camkk2ox_vs_wt_ids, file="CAMKK2OX_vs_WT_downregulated_ids.txt", col.names = F, row.names = F, quote=F)
+downregulated_camkk2ox_vs_wt_all_info <- filter(de_camkk2ox_vs_wt, de_camkk2ox_vs_wt$logFC<0)
+write.table( downregulated_camkk2ox_vs_wt_all_info, file="CAMKK2OX_vs_WT_downregulated_all_info.txt", col.names = T, row.names = F, quote=F)
 
-downregulated_genes <- filter(de_genes_all, de_genes_all$logFC<0)
-write.table( downregulated_genes, file="CAMKK2OX_vs_WT_downregulated.txt", col.names = T, row.names = F, quote=F)
-
-expressed_genes <- dge_expressed$genes$gene_id # same as row.names(log2cpm_expressed)
-length(expressed_genes)
-write.table( expressed_genes, file="CAMKK2OX_vs_WT_expressed.txt", col.names = T, row.names = F, quote=F)
+# expressed_genes <- dge_expressed$genes$gene_id # same as row.names(log2cpm_expressed)
+# length(expressed_genes)
+# write.table( expressed_genes, file="CAMKK2OX_vs_WT_expressed.txt", col.names = T, row.names = F, quote=F)
 
 
 # The above files are saved to rnaseq_analysis/de_analysis. Click Refresh in the Files tab on 
@@ -661,8 +663,6 @@ write.table( expressed_genes, file="CAMKK2OX_vs_WT_expressed.txt", col.names = T
 
 # TODO: Why am I getting such a small list of significant dge genes for the following two
 # comparisons?
-# This problem only happens when I try to remove the 3rd treatment... But if that's the problem
-# why is it not evident in the first comparison?
 # TODO: Volcano plots for the following two comparisons.
 ### COMPARISON OF MKK2OX to wildtype
 ##########################################################################################
@@ -695,18 +695,18 @@ print(TREATMENT)
 BATCH <- as.factor( sample_info$batch )
 
 # create design matrix without interaction term
-design1 <- model.matrix( ~ TREATMENT + BATCH )
-print(design1)
+design2a <- model.matrix( ~ TREATMENT + BATCH )
+print(design2a)
 
 controlcolstring <- "(Intercept)"
-design1 <- design1[, c(controlcolstring, "TREATMENTMKK2_OX", "BATCH2", "BATCH3")]
-print(design1)
+design2b <- design2a[, c(controlcolstring, "TREATMENTMKK2_OX", "BATCH2", "BATCH3")]
+print(design2b)
 
-colnames(design1)[2] <- "MKK2_OX" 
-print(design1)
+colnames(design2b)[2] <- "MKK2_OX" 
+print(design2b)
 
-dispersions_design1 <- estimateDisp(norm_dge_expressed, design1, robust=TRUE)
-dispersions_design1$common.dispersion
+dispersions_design2b <- estimateDisp(norm_dge_expressed, design2b, robust=TRUE)
+dispersions_design2b$common.dispersion
 
 # Note from above the value of the common negative binomial dispersion. The square-root of this
 # value is called the biological coefficient of variation (BCV) and its magnitude is indicative 
@@ -714,34 +714,35 @@ dispersions_design1$common.dispersion
 # user guide: “Typical values for the common BCV for datasets arising from well-controlled 
 # experiments are 0.4 for human data, 0.1 data on genetically identical model organisms or 0.01
 # for technical replicates”.
-bcv_design1 <- signif(sqrt(dispersions_design1$common.dispersion), 5)
-bcv_design1
+bcv_design2b <- signif(sqrt(dispersions_design2b$common.dispersion), 5)
+bcv_design2b
 
 ##########################################################################################
 ### DE contrasts: treatment versus control
 ##########################################################################################
 # fit genewise negative binomial GLMs for design1
-glmfit_design1 <- glmQLFit(dispersions_design1, design1)
+glmfit_design2b <- glmQLFit(dispersions_design2b, design2b)
 
 # genewise statistical tests can be performed for a given coefficient or coefficient contrast
-qlf_design1 <- glmQLFTest( glmfit_design1, coef = "MKK2_OX" )
+qlf_design2b <- glmQLFTest( glmfit_design2b, coef = "MKK2_OX" )
 
+# lrt_top_design is a lot smaller than for the previous comparison!
 # The function topTags can be called to extract the top n DE genes ranked by p-value or 
 # absolute log-fold change. Save all results by setting n to NULL. Use Benjamini-Hochberg (BH)
 # method to adjust p-values for multiple testing. The output is set to be sorted by ordinary
 # p-values. We do not provide a specified adjusted p-value cutoff now.
-lrt_top_design1 <- topTags(qlf_design1, adjust.method = "BH", sort.by = "PValue",
+lrt_top_design2b <- topTags(qlf_design2b, adjust.method = "BH", sort.by = "PValue",
                            p.value = 0.05, n=NULL)
-row.names(lrt_top_design1$table) <- NULL
-head(lrt_top_design1$table)
-dim(lrt_top_design1$table)
+row.names(lrt_top_design2b$table) <- NULL
+head(lrt_top_design2b$table)
+dim(lrt_top_design2b$table)
 
 # summary of DE genes based only on adjusted p-value threshold
-summary(decideTests(qlf_design1, p.value = 0.05, lfc = 0))
+summary(decideTests(qlf_design2b, p.value = 0.05, lfc = 0))
 
 # Summary of DE genes based on adjusted p-value threshold and a 2 fold change threshold.
 # Note the numbers for up and down regulated genes have reduced.
-summary(decideTests(qlf_design1, p.value = 0.05, lfc = log2(2)))
+summary(decideTests(qlf_design2b, p.value = 0.05, lfc = log2(2)))
 
 # Instead of defining a hard cut-off for fold change, it would be better to select a value
 # based on the power of our experiment to detect changes in expression, which would be 
@@ -764,7 +765,7 @@ summary(decideTests(qlf_design1, p.value = 0.05, lfc = log2(2)))
 depth <- min( dge$samples$lib.size )*100*2 / sum( fusarium_gene_anno$end - fusarium_gene_anno$start )
 
 # Estimate power for a range of fold change values between 1 and 5 with other factors fixed
-power_analysis <- rnapower(depth, n=group_size, cv=bcv_design1, effect=seq(1, 5, by=0.1),
+power_analysis <- rnapower(depth, n=group_size, cv=bcv_design2b, effect=seq(1, 5, by=0.1),
                            alpha=0.05)
 
 png('MKK2OX_vs_WT_power.png', width = 800,height = 600)
@@ -786,12 +787,12 @@ fold_change_cutoff_2=2
 fold_change_cutoff_test_super_low=0.5
 
 # Define DE genes with these cut-offs
-summary(decideTests(qlf_design1, lfc = log2(fold_change_cutoff_p_8_mkk_vs_wt), p.value = 0.05))
-de_genes_all <- lrt_top_design1$table[ lrt_top_design1$table$FDR < FDR_cutoff &
-                                         ( abs(as.numeric(lrt_top_design1$table$logFC)) >
+summary(decideTests(qlf_design2b, lfc = log2(fold_change_cutoff_p_8_mkk_vs_wt), p.value = 0.05))
+de_mkk2ox_vs_wt <- lrt_top_design2b$table[ lrt_top_design2b$table$FDR < FDR_cutoff &
+                                         ( abs(as.numeric(lrt_top_design2b$table$logFC)) >
                                              log2(fold_change_cutoff_p_8_mkk_vs_wt) ), ]
-head(de_genes_all)
-print(nrow(de_genes_all))
+head(de_mkk2ox_vs_wt)
+print(nrow(de_mkk2ox_vs_wt))
 
 ##########################################################################################
 ### Heat map
@@ -799,7 +800,7 @@ print(nrow(de_genes_all))
 ##########################################################################################
 png('MKK2OX_vs_WT_heatmap.png', width = 700,height = 1000)
 par(mar= c(15,15,15,15))
-coolmap((log2cpm_expressed[ match(de_genes_all$gene_id, row.names(log2cpm_expressed)),]),
+coolmap((log2cpm_expressed[ match(de_mkk2ox_vs_wt$gene_id, row.names(log2cpm_expressed)),]),
         keysize = 1, cexRow= .9, margins = c(10,10), main="Heat Map MKK2OX vs WT")
 dev.off()
 
@@ -810,18 +811,18 @@ dev.off()
 # To visualize log fold changes for different genes.
 ##########################################################################################
 # Code based off https://www.r-bloggers.com/2014/05/using-volcano-plots-in-r-to-visualize-microarray-and-rna-seq-results/
-head(de_genes_all)
-with(de_genes_all, plot(logFC, -log10(PValue), pch=20, main="Volcano Plot MKK2OX vs WT", xlim=c(-7,5)))
+head(de_mkk2ox_vs_wt)
+with(de_mkk2ox_vs_wt, plot(logFC, -log10(PValue), pch=20, main="Volcano Plot MKK2OX vs WT", xlim=c(-7,5)))
 # Add colored points: red if -log10(PValue)>8, orange if log2FC>2, green if both)
-with(subset(de_genes_all, -log10(PValue)>7 ), points(logFC, -log10(PValue), pch=20, col="red"))
-with(subset(de_genes_all, abs(logFC)>2), points(logFC, -log10(PValue), pch=20, col="orange"))
-with(subset(de_genes_all, -log10(PValue)>7 & abs(logFC)>2), points(logFC, -log10(PValue), pch=20, col="green"))
+with(subset(de_mkk2ox_vs_wt, -log10(PValue)>7 ), points(logFC, -log10(PValue), pch=20, col="red"))
+with(subset(de_mkk2ox_vs_wt, abs(logFC)>2), points(logFC, -log10(PValue), pch=20, col="orange"))
+with(subset(de_mkk2ox_vs_wt, -log10(PValue)>7 & abs(logFC)>2), points(logFC, -log10(PValue), pch=20, col="green"))
 
 library(calibrate)
 # Trying to add labels
 # Shortening gene_id
-de_genes_all<- de_genes_all %>% mutate_at(~gsub("gene-", "", .), .vars = 1)
-with(subset(de_genes_all, -log10(PValue)>7 & abs(logFC)>2), textxy(logFC, -log10(PValue), labs=gene_id, cex=.6))
+de_mkk2ox_vs_wt<- de_mkk2ox_vs_wt %>% mutate_at(~gsub("gene-", "", .), .vars = 1)
+with(subset(de_mkk2ox_vs_wt, -log10(PValue)>7 & abs(logFC)>2), textxy(logFC, -log10(PValue), labs=gene_id, cex=.6))
 
 ##########################################################################################
 ### Tests for over-represented GO and KEGG pathway terms
@@ -838,17 +839,20 @@ with(subset(de_genes_all, -log10(PValue)>7 & abs(logFC)>2), textxy(logFC, -log10
 # (http://pantherdb.org/). We test the enrichments seperately for up- and down-regulated 
 # genes.
 ##########################################################################################
-de_genes_all <- de_genes_all[ -c(2:6, 8:11) ]
+upregulated_mkk2ox_vs_wt_ids <- de_mkk2ox_vs_wt$gene_id[ de_mkk2ox_vs_wt$logFC>0 ]
+write.table( upregulated_mkk2ox_vs_wt_ids, file="MKK2OX_vs_WT_upregulated_ids.txt", col.names = F, row.names = F, quote=F)
+upregulated_mkk2ox_vs_wt_all_info <- filter(de_mkk2ox_vs_wt, de_mkk2ox_vs_wt$logFC>0)
+write.table( upregulated_mkk2ox_vs_wt_all_info, file="MKK2OX_vs_WT_upregulated_all_info.txt", col.names = T, row.names = F, quote=F)
 
-upregulated_genes <- filter(de_genes_all, de_genes_all$logFC>0)
-write.table( upregulated_genes, file="MKK2OX_vs_WT_upregulated.txt", col.names = T, row.names = F, quote=F)
+downregulated_mkk2ox_vs_wt_ids <- de_mkk2ox_vs_wt$gene_id[ de_mkk2ox_vs_wt$logFC<0 ]
+write.table( downregulated_mkk2ox_vs_wt_ids, file="MKK2OX_vs_WT_downregulated_ids.txt", col.names = F, row.names = F, quote=F)
+downregulated_mkk2ox_vs_wt_all_info <- filter(de_mkk2ox_vs_wt, de_mkk2ox_vs_wt$logFC<0)
+write.table( downregulated_mkk2ox_vs_wt_all_info, file="MKK2OX_vs_WT_downregulated_all_info.txt", col.names = T, row.names = F, quote=F)
 
-downregulated_genes <- filter(de_genes_all, de_genes_all$logFC<0)
-write.table( downregulated_genes, file="MKK2OX_vs_WT_downregulated.txt", col.names = T, row.names = F, quote=F)
 
-expressed_genes <- dge_expressed$genes$gene_id # same as row.names(log2cpm_expressed)
-length(expressed_genes)
-write.table( expressed_genes, file="MKK2OX_vs_WT_expressed.txt", col.names = F, row.names = F, quote=F)
+# expressed_genes <- dge_expressed$genes$gene_id # same as row.names(log2cpm_expressed)
+# length(expressed_genes)
+# write.table( expressed_genes, file="MKK2OX_vs_WT_expressed.txt", col.names = F, row.names = F, quote=F)
 
 
 # The above files are saved to rnaseq_analysis/de_analysis. Click Refresh in the Files tab on 
@@ -896,18 +900,18 @@ print(TREATMENT)
 BATCH <- as.factor( sample_info$batch )
 
 # create design matrix without interaction term
-design1 <- model.matrix( ~ TREATMENT + BATCH )
-print(design1)
+design3a <- model.matrix( ~ TREATMENT + BATCH )
+print(design3a)
 
 controlcolstring <- "(Intercept)"
-design1 <- design1[, c(controlcolstring, "TREATMENTMKK2_OX", "BATCH2", "BATCH3")]
-print(design1)
+design3b <- design3a[, c(controlcolstring, "TREATMENTMKK2_OX", "BATCH2", "BATCH3")]
+print(design3b)
 
-colnames(design1)[2] <- "MKK2_OX"
-print(design1)
+colnames(design3b)[2] <- "MKK2_OX"
+print(design3b)
 
-dispersions_design1 <- estimateDisp(norm_dge_expressed, design1, robust=TRUE)
-dispersions_design1$common.dispersion
+dispersions_design3b <- estimateDisp(norm_dge_expressed, design3b, robust=TRUE)
+dispersions_design3b$common.dispersion
 
 # Note from above the value of the common negative binomial dispersion. The square-root of this
 # value is called the biological coefficient of variation (BCV) and its magnitude is indicative 
@@ -915,34 +919,34 @@ dispersions_design1$common.dispersion
 # user guide: “Typical values for the common BCV for datasets arising from well-controlled 
 # experiments are 0.4 for human data, 0.1 data on genetically identical model organisms or 0.01
 # for technical replicates”.
-bcv_design1 <- signif(sqrt(dispersions_design1$common.dispersion), 5)
-bcv_design1
+bcv_design3b <- signif(sqrt(dispersions_design3b$common.dispersion), 5)
+bcv_design3b
 
 ##########################################################################################
 ### DE contrasts: treatment versus control
 ##########################################################################################
 # fit genewise negative binomial GLMs for design1
-glmfit_design1 <- glmQLFit(dispersions_design1, design1)
+glmfit_design3b <- glmQLFit(dispersions_design3b, design3b)
 
 # genewise statistical tests can be performed for a given coefficient or coefficient contrast
-qlf_design1 <- glmQLFTest( glmfit_design1, coef = "MKK2_OX" )
+qlf_design3b <- glmQLFTest( glmfit_design3b, coef = "MKK2_OX" )
 
 # The function topTags can be called to extract the top n DE genes ranked by p-value or 
 # absolute log-fold change. Save all results by setting n to NULL. Use Benjamini-Hochberg (BH)
 # method to adjust p-values for multiple testing. The output is set to be sorted by ordinary
 # p-values. We do not provide a specified adjusted p-value cutoff now.
-lrt_top_design1 <- topTags(qlf_design1, adjust.method = "BH", sort.by = "PValue",
+lrt_top_design3b <- topTags(qlf_design3b, adjust.method = "BH", sort.by = "PValue",
                            p.value = 0.05, n=NULL)
-row.names(lrt_top_design1$table) <- NULL
-head(lrt_top_design1$table)
-dim(lrt_top_design1$table)
+row.names(lrt_top_design3b$table) <- NULL
+head(lrt_top_design3b$table)
+dim(lrt_top_design3b$table)
 
 # summary of DE genes based only on adjusted p-value threshold
-summary(decideTests(qlf_design1, p.value = 0.05, lfc = 0))
+summary(decideTests(qlf_design3b, p.value = 0.05, lfc = 0))
 
 # Summary of DE genes based on adjusted p-value threshold and a 2 fold change threshold.
 # Note the numbers for up and down regulated genes have reduced.
-summary(decideTests(qlf_design1, p.value = 0.05, lfc = log2(2)))
+summary(decideTests(qlf_design3b, p.value = 0.05, lfc = log2(2)))
 
 # Instead of defining a hard cut-off for fold change, it would be better to select a value
 # based on the power of our experiment to detect changes in expression, which would be 
@@ -965,7 +969,7 @@ summary(decideTests(qlf_design1, p.value = 0.05, lfc = log2(2)))
 depth <- min( dge$samples$lib.size )*100*2 / sum( fusarium_gene_anno$end - fusarium_gene_anno$start )
 
 # Estimate power for a range of fold change values between 1 and 5 with other factors fixed
-power_analysis <- rnapower(depth, n=group_size, cv=bcv_design1, effect=seq(1, 5, by=0.1),
+power_analysis <- rnapower(depth, n=group_size, cv=bcv_design3b, effect=seq(1, 5, by=0.1),
                            alpha=0.05)
 
 png('MKK2OX_vs_CAMKK2OX_power.png', width = 800,height = 600)
@@ -986,19 +990,19 @@ fold_change_cutoff_2=2
 fold_change_cutoff_test_super_low=0.5
 
 # Define DE genes with these cut-offs
-summary(decideTests(qlf_design1, lfc = log2(fold_change_cutoff_p_8_mkk2_vs_camkk2), p.value = 0.05))
-de_genes_all <- lrt_top_design1$table[ lrt_top_design1$table$FDR < FDR_cutoff &
-                                         ( abs(as.numeric(lrt_top_design1$table$logFC)) >
+summary(decideTests(qlf_design3b, lfc = log2(fold_change_cutoff_p_8_mkk2_vs_camkk2), p.value = 0.05))
+de_mkk2ox_vs_camkk2ox <- lrt_top_design3b$table[ lrt_top_design3b$table$FDR < FDR_cutoff &
+                                         ( abs(as.numeric(lrt_top_design3b$table$logFC)) >
                                              log2(fold_change_cutoff_p_8_mkk2_vs_camkk2) ), ]
-head(de_genes_all)
-print(nrow(de_genes_all))
+head(de_mkk2ox_vs_camkk2ox)
+print(nrow(de_mkk2ox_vs_camkk2ox))
 
 ##########################################################################################
 ### Heat map
 # To visualize the expression differences among samples for the DE genes identified.
 ##########################################################################################
 png('MKK2OX_vs_CAMKK2OX_heatmap.png', width = 600,height = 800)
-coolmap((log2cpm_expressed[ match(de_genes_all$gene_id, row.names(log2cpm_expressed)),]),
+coolmap((log2cpm_expressed[ match(de_mkk2ox_vs_camkk2ox$gene_id, row.names(log2cpm_expressed)),]),
         keysize = 1, cexRow= .9, margins = c(10,10), main="Heat Map MKK2OX vs CAMKK2OX")
 dev.off()
 
@@ -1008,18 +1012,18 @@ dev.off()
 # To visualize log fold changes for different genes.
 ##########################################################################################
 # Code based off https://www.r-bloggers.com/2014/05/using-volcano-plots-in-r-to-visualize-microarray-and-rna-seq-results/
-head(de_genes_all)
-with(de_genes_all, plot(logFC, -log10(PValue), pch=20, main="Volcano Plot MKK2OX vs CAMKK2OX", xlim=c(-7,5)))
+head(de_mkk2ox_vs_camkk2ox)
+with(de_mkk2ox_vs_camkk2ox, plot(logFC, -log10(PValue), pch=20, main="Volcano Plot MKK2OX vs CAMKK2OX", xlim=c(-7,5)))
 # Add colored points: red if -log10(PValue)>8, orange if log2FC>2, green if both)
-with(subset(de_genes_all, -log10(PValue)>7 ), points(logFC, -log10(PValue), pch=20, col="red"))
-with(subset(de_genes_all, abs(logFC)>2), points(logFC, -log10(PValue), pch=20, col="orange"))
-with(subset(de_genes_all, -log10(PValue)>7 & abs(logFC)>2), points(logFC, -log10(PValue), pch=20, col="green"))
+with(subset(de_mkk2ox_vs_camkk2ox, -log10(PValue)>7 ), points(logFC, -log10(PValue), pch=20, col="red"))
+with(subset(de_mkk2ox_vs_camkk2ox, abs(logFC)>2), points(logFC, -log10(PValue), pch=20, col="orange"))
+with(subset(de_mkk2ox_vs_camkk2ox, -log10(PValue)>7 & abs(logFC)>2), points(logFC, -log10(PValue), pch=20, col="green"))
 
 library(calibrate)
 # Trying to add labels
 # Shortening gene_id
-de_genes_all<- de_genes_all %>% mutate_at(~gsub("gene-", "", .), .vars = 1)
-with(subset(de_genes_all, -log10(PValue)>7 & abs(logFC)>2), textxy(logFC, -log10(PValue), labs=gene_id, cex=.6))
+de_mkk2ox_vs_camkk2ox<- de_mkk2ox_vs_camkk2ox %>% mutate_at(~gsub("gene-", "", .), .vars = 1)
+with(subset(de_mkk2ox_vs_camkk2ox, -log10(PValue)>7 & abs(logFC)>2), textxy(logFC, -log10(PValue), labs=gene_id, cex=.6))
 
 ##########################################################################################
 ### Tests for over-represented GO and KEGG pathway terms
@@ -1036,17 +1040,17 @@ with(subset(de_genes_all, -log10(PValue)>7 & abs(logFC)>2), textxy(logFC, -log10
 # (http://pantherdb.org/). We test the enrichments seperately for up- and down-regulated 
 # genes.
 ##########################################################################################
-de_genes_all <- de_genes_all[ -c(2:6, 8:11) ]
 
-upregulated_genes <- filter(de_genes_all, de_genes_all$logFC>0)
-write.table( upregulated_genes, file="MKK2OX_vs_CAMKK2OX_upregulated.txt", col.names = T, row.names = F, quote=F)
+upregulated_mkk2ox_vs_camkk2ox_ids <- de_mkk2ox_vs_camkk2ox$gene_id[ de_mkk2ox_vs_camkk2ox$logFC>0 ]
+write.table( upregulated_mkk2ox_vs_wt_ids, file="MKK2OX_vs_CAMKK2OX_upregulated_ids.txt", col.names = F, row.names = F, quote=F)
+upregulated_mkk2ox_vs_camkk2ox_all_info <- filter(de_mkk2ox_vs_camkk2ox, de_mkk2ox_vs_camkk2ox$logFC>0)
+write.table( upregulated_mkk2ox_vs_camkk2ox_all_info, file="MKK2OX_vs_CAMKK2OX_upregulated_all_info.txt", col.names = T, row.names = F, quote=F)
 
-downregulated_genes <- filter(de_genes_all, de_genes_all$logFC<0)
-write.table( downregulated_genes, file="MKK2OX_vs_CAMKK2OX_downregulated.txt", col.names = T, row.names = F, quote=F)
+downregulated_mkk2ox_vs_camkk2ox_ids <- de_mkk2ox_vs_camkk2ox$gene_id[ de_mkk2ox_vs_camkk2ox$logFC<0 ]
+write.table( downregulated_mkk2ox_vs_camkk2ox_ids, file="MKK2OX_vs_CAMKK2OX_downregulated_ids.txt", col.names = F, row.names = F, quote=F)
+downregulated_mkk2ox_vs_camkk2ox_all_info <- filter(de_mkk2ox_vs_camkk2ox, de_mkk2ox_vs_camkk2ox$logFC<0)
+write.table( downregulated_mkk2ox_vs_camkk2ox_all_info, file="MKK2OX_vs_CAMKK2OX_downregulated_all_info.txt", col.names = T, row.names = F, quote=F)
 
-expressed_genes <- dge_expressed$genes$gene_id # same as row.names(log2cpm_expressed)
-length(expressed_genes)
-write.table( expressed_genes, file="MKK2OX_vs_CAMKK2OX_expressed.txt", col.names = F, row.names = F, quote=F)
 
 
 # The above files are saved to rnaseq_analysis/de_analysis. Click Refresh in the Files tab on 
