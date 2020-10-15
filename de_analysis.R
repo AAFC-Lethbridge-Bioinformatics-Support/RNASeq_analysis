@@ -632,8 +632,10 @@ with(subset(de_camkk2ox_vs_wt, -log10(PValue)>7 & abs(logFC)>2), textxy(logFC, -
 # genes.
 ##########################################################################################
 
+# Upregulated gene_ids
 upregulated_camkk2ox_vs_wt_ids <- de_camkk2ox_vs_wt$gene_id[ de_camkk2ox_vs_wt$logFC>0 ]
 write.table( upregulated_camkk2ox_vs_wt_ids, file="CAMKK2OX_vs_WT_upregulated_ids.txt", col.names = F, row.names = F, quote=F)
+# Upregulated genes_ids w/ info on PValues and logFC etc.
 upregulated_camkk2ox_vs_wt_all_info <- filter(de_camkk2ox_vs_wt, de_camkk2ox_vs_wt$logFC>0)
 write.table( upregulated_camkk2ox_vs_wt_all_info, file="CAMKK2OX_vs_WT_upregulated_all_info.txt", col.names = T, row.names = F, quote=F)
 
@@ -641,10 +643,6 @@ downregulated_camkk2ox_vs_wt_ids <- de_camkk2ox_vs_wt$gene_id[ de_camkk2ox_vs_wt
 write.table( downregulated_camkk2ox_vs_wt_ids, file="CAMKK2OX_vs_WT_downregulated_ids.txt", col.names = F, row.names = F, quote=F)
 downregulated_camkk2ox_vs_wt_all_info <- filter(de_camkk2ox_vs_wt, de_camkk2ox_vs_wt$logFC<0)
 write.table( downregulated_camkk2ox_vs_wt_all_info, file="CAMKK2OX_vs_WT_downregulated_all_info.txt", col.names = T, row.names = F, quote=F)
-
-# expressed_genes <- dge_expressed$genes$gene_id # same as row.names(log2cpm_expressed)
-# length(expressed_genes)
-# write.table( expressed_genes, file="CAMKK2OX_vs_WT_expressed.txt", col.names = T, row.names = F, quote=F)
 
 
 # The above files are saved to rnaseq_analysis/de_analysis. Click Refresh in the Files tab on 
@@ -661,9 +659,6 @@ write.table( downregulated_camkk2ox_vs_wt_all_info, file="CAMKK2OX_vs_WT_downreg
 
 
 
-# TODO: Why am I getting such a small list of significant dge genes for the following two
-# comparisons?
-# TODO: Volcano plots for the following two comparisons.
 ### COMPARISON OF MKK2OX to wildtype
 ##########################################################################################
 ### Statistical modelling of data and tests for DE
@@ -682,7 +677,10 @@ write.table( downregulated_camkk2ox_vs_wt_all_info, file="CAMKK2OX_vs_WT_downreg
 ### Define design matrix
 ##########################################################################################
 # convert treatment information to factors
-TREATMENT <- as.factor( sample_info$treatment )
+# filtering out sample info -- keeping only treatments wildtype and mkk2ox.
+sample_info_mkk2ox_vs_wt <- filter(sample_info, (treatment == "wildtype" | treatment == "MKK2_OX"))
+print(sample_info_mkk2ox_vs_wt)
+TREATMENT <- as.factor( sample_info_mkk2ox_vs_wt$treatment )
 
 # Define reference as control so that all DE results will be interpreted as changes in
 # treatment with respect to control ( treament vs. control) samples.
@@ -692,21 +690,29 @@ print(TREATMENT)
 # To test for differences between treatment and control while adjusting for any differences
 # between the batches, we add a term BATCH to the model defined as follows:
 # convert batch information to factors
-BATCH <- as.factor( sample_info$batch )
+BATCH <- as.factor( sample_info_mkk2ox_vs_wt$batch )
 
 # create design matrix without interaction term
-design2a <- model.matrix( ~ TREATMENT + BATCH )
-print(design2a)
+design2 <- model.matrix( ~ TREATMENT + BATCH )
+print(design2)
 
-controlcolstring <- "(Intercept)"
-design2b <- design2a[, c(controlcolstring, "TREATMENTMKK2_OX", "BATCH2", "BATCH3")]
-print(design2b)
+colnames(design2)[2] <- "MKK2_OX" 
+print(design2)
 
-colnames(design2b)[2] <- "MKK2_OX" 
-print(design2b)
+# subsetting norm_dge_expressed so that its treatments match the treatments in sample_info.
+norm_dge_expressed
+norm_dge_expressed_mkk2ox_vs_wt <- norm_dge_expressed
+# this is a disaster. i'll just ask rodrigo tomorrow.
+head(norm_dge_expressed_mkk2ox_vs_wt$counts)
+# norm_dge_expressed_mkk2ox_vs_wt$counts <- norm_dge_expressed_mkk2ox_vs_wt$counts %>% select(-contains("CA-MKK")) 
+# norm_dge_expressed_mkk2ox_vs_wt$counts <- norm_dge_expressed_mkk2ox_vs_wt$counts[ -c(10:15) ]
+# norm_dge_expressed_mkk2ox_vs_wt$counts[ , -which(names(norm_dge_expressed_mkk2ox_vs_wt$counts) 
+#                                                    %in% c("192.CA-MKK2_OX10","191.CA-MKK2_OX10"))]
 
-dispersions_design2b <- estimateDisp(norm_dge_expressed, design2b, robust=TRUE)
-dispersions_design2b$common.dispersion
+head(norm_dge_expressed_mkk2ox_vs_wt$counts)
+
+dispersions_design2 <- estimateDisp(norm_dge_expressed_mkk2ox_vs_wt, design2, robust=TRUE)
+dispersions_design2$common.dispersion
 
 # Note from above the value of the common negative binomial dispersion. The square-root of this
 # value is called the biological coefficient of variation (BCV) and its magnitude is indicative 
