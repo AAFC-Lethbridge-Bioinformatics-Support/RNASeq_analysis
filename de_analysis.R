@@ -316,6 +316,60 @@ barplot(dge$samples$lib.size/1e6, ylab="Number of sequenced reads (in millions)"
         main = "Sample Sizes", las=2, names=row.names( dge$samples), cex.names = 0.9)
 dev.off()
 
+# Creating sample size plot with replications combined
+head(dge$samples$lib.size)
+(dge$samples$lib.size)
+(dge$samples)
+
+# creating treatment vector
+treatment <- c("WT", "MKK2_OX4", "MKK2_OX5", "CA-MKK2_OX9", "CA-MKK2_OX10")  
+# creating lib.size vector
+lib.size <- dge$samples$lib.size
+wt_lib.size <- lib.size[1:3]
+head (wt_lib.size)
+wt_lib.size <- sum (wt_lib.size)
+wt_lib.size == (58303726 + 53826621 + 67167679)
+
+lib.size <- dge$samples$lib.size
+ox4_lib.size <- lib.size[4:6]
+head (ox4_lib.size)
+ox4_lib.size <- sum (ox4_lib.size)
+ox4_lib.size == (67433556 + 61891582 + 55023876)
+
+lib.size <- dge$samples$lib.size
+ox5_lib.size <- lib.size[7:9]
+head (ox5_lib.size)
+ox5_lib.size <- sum (ox5_lib.size)
+ox5_lib.size == (63322569 + 60794130 + 56386070)
+
+lib.size <- dge$samples$lib.size
+ox9_lib.size <- lib.size[10:12]
+head (ox9_lib.size)
+ox9_lib.size <- sum (ox9_lib.size)
+ox9_lib.size == (66555318 + 64064753 + 60686661)
+
+lib.size <- dge$samples$lib.size
+ox10_lib.size <- lib.size[13:15]
+head (ox10_lib.size)
+ox10_lib.size <- sum (ox10_lib.size)
+ox10_lib.size == (63770523 + 54494637 + 55907455)
+
+lib.size <- c(wt_lib.size, ox4_lib.size, ox5_lib.size, ox9_lib.size, ox10_lib.size)
+
+#Creating Data Frame using above vectors    
+sample_sizes_combined_treatments <- data.frame(treatment, lib.size)
+
+#Printing the above Data Frame    
+sample_sizes_combined_treatments
+sample_sizes_combined_treatments$treatment
+
+#creating plot
+png('sample_sizes_combined_treatments.png', width = 700,height = 700)
+par(mar = c(10, 10, 10, 5), mgp = c(7, 1, 0))
+barplot(sample_sizes_combined_treatments$lib.size/1e6, ylab="Number of sequenced reads (in millions)", xlab = "Treatment", 
+        main = "Treatment Sizes", las = 2, names=row.names(sample_sizes_combined_treatments$treatment), cex.names = 0.5)
+dev.off()
+
 ##########################################################################################
 
 
@@ -357,11 +411,6 @@ print(cpm_expr_threshold)
 group_size <- 3
 dge_expressed <- dge[ rowSums(cpm(dge) > cpm_expr_threshold) >= group_size, ]
 dim(dge_expressed$counts)
-
-#Trying to figure out what everything looks like. Still looking for dups
-head(dge_expressed$counts)
-head(dge_expressed$samples)
-head(dge_expressed$genes)
 
 # Testing for duplicates
 length(unique(dge_expressed$genes$gene_id)) == nrow(dge_expressed$genes)
@@ -639,7 +688,7 @@ dev.off()
 png('CAMKK2OX_vs_WT_heatmap_3.5.png', width = 1000,height = 10000)
 par(mar= c(10,10,10,10))
 coolmap((log2cpm_expressed[ match(de_camkk2ox_vs_wt_3.5$gene_id, row.names(log2cpm_expressed)),]),
-        keysize = 1, cexRow= .9, margins = c(10,10), main="Heat Map CAMKK2OX vs WT (LFC Cutoff = 3.5)")
+        keysize = 1, cexRow= .9, margins = c(10,10), main="Heat Map CAMKK2OX vs WT (FC Cutoff = 3.5)")
 dev.off()
 
 
@@ -649,7 +698,8 @@ dev.off()
 ##########################################################################################
 # Code based off https://www.r-bloggers.com/2014/05/using-volcano-plots-in-r-to-visualize-microarray-and-rna-seq-results/
 head(de_camkk2ox_vs_wt_.8)
-with(de_camkk2ox_vs_wt_.8, plot(logFC, -log10(PValue), pch=20, main="Volcano Plot CAMKK2OX vs WT (Power = 0.8)", xlim=c(-15,10)))
+png("CAMKK2_OX_vs_WT_volcano_.8.png", width = 700, height = 1500)
+with(de_camkk2ox_vs_wt_.8, plot(logFC, -log10(PValue), pch=20, main="Volcano Plot CAMKK2OX vs WT (Power = 0.8)", xlim=c(-20,10)))
 # Add colored points: red if -log10(PValue)>8, orange if log2FC>2, green if both)
 with(subset(de_camkk2ox_vs_wt_.8, -log10(PValue)>7 ), points(logFC, -log10(PValue), pch=20, col="red"))
 with(subset(de_camkk2ox_vs_wt_.8, abs(logFC)>2), points(logFC, -log10(PValue), pch=20, col="orange"))
@@ -659,11 +709,13 @@ library(calibrate)
 # Trying to add labels
 # Shortening gene_id
 de_camkk2ox_vs_wt_.8<- de_camkk2ox_vs_wt_.8 %>% mutate_at(~gsub("gene-", "", .), .vars = 1)
-with(subset(de_camkk2ox_vs_wt_.8, -log10(PValue)>7 & abs(logFC)>2), textxy(logFC, -log10(PValue), labs=gene_id, cex=.6))
+with(subset(de_camkk2ox_vs_wt_.8, -log10(PValue)>7 & abs(logFC)>2), textxy(logFC, -log10(PValue), labs=gene_id, cex=.65))
+dev.off()
 
 
 head(de_camkk2ox_vs_wt_.9)
-with(de_camkk2ox_vs_wt_.9, plot(logFC, -log10(PValue), pch=20, main="Volcano Plot CAMKK2OX vs WT (Power = 0.9)", xlim=c(-15,10)))
+png("CAMKK2_OX_vs_WT_volcano_.9.png", width = 700, height = 1500)
+with(de_camkk2ox_vs_wt_.9, plot(logFC, -log10(PValue), pch=20, main="Volcano Plot CAMKK2OX vs WT (Power = 0.9)", xlim=c(-20,10)))
 # Add colored points: red if -log10(PValue)>8, orange if log2FC>2, green if both)
 with(subset(de_camkk2ox_vs_wt_.9, -log10(PValue)>7 ), points(logFC, -log10(PValue), pch=20, col="red"))
 with(subset(de_camkk2ox_vs_wt_.9, abs(logFC)>2), points(logFC, -log10(PValue), pch=20, col="orange"))
@@ -673,11 +725,13 @@ library(calibrate)
 # Trying to add labels
 # Shortening gene_id
 de_camkk2ox_vs_wt_.9<- de_camkk2ox_vs_wt_.9 %>% mutate_at(~gsub("gene-", "", .), .vars = 1)
-with(subset(de_camkk2ox_vs_wt_.9, -log10(PValue)>7 & abs(logFC)>2), textxy(logFC, -log10(PValue), labs=gene_id, cex=.6))
+with(subset(de_camkk2ox_vs_wt_.9, -log10(PValue)>7 & abs(logFC)>2), textxy(logFC, -log10(PValue), labs=gene_id, cex=.65))
+dev.off()
 
 
 head(de_camkk2ox_vs_wt_3.5)
-with(de_camkk2ox_vs_wt_3.5, plot(logFC, -log10(PValue), pch=20, main="Volcano Plot CAMKK2OX vs WT (LFC Cutoff = 3.5)", xlim=c(-15,10)))
+png("CAMKK2_OX_vs_WT_volcano_3.5.png", width = 700, height = 1500)
+with(de_camkk2ox_vs_wt_3.5, plot(logFC, -log10(PValue), pch=20, main="Volcano Plot CAMKK2OX vs WT (FC Cutoff = 3.5)", xlim=c(-20,10)))
 # Add colored points: red if -log10(PValue)>8, orange if log2FC>2, green if both)
 with(subset(de_camkk2ox_vs_wt_3.5, -log10(PValue)>7 ), points(logFC, -log10(PValue), pch=20, col="red"))
 with(subset(de_camkk2ox_vs_wt_3.5, abs(logFC)>2), points(logFC, -log10(PValue), pch=20, col="orange"))
@@ -687,7 +741,8 @@ library(calibrate)
 # Trying to add labels
 # Shortening gene_id
 de_camkk2ox_vs_wt_3.5<- de_camkk2ox_vs_wt_3.5 %>% mutate_at(~gsub("gene-", "", .), .vars = 1)
-with(subset(de_camkk2ox_vs_wt_3.5, -log10(PValue)>7 & abs(logFC)>2), textxy(logFC, -log10(PValue), labs=gene_id, cex=.6))
+with(subset(de_camkk2ox_vs_wt_3.5, -log10(PValue)>7 & abs(logFC)>2), textxy(logFC, -log10(PValue), labs=gene_id, cex=.65))
+dev.off()
 
 ##########################################################################################
 ### Tests for over-represented GO and KEGG pathway terms
@@ -919,20 +974,20 @@ print(nrow(de_mkk2ox_vs_wt_3.5))
 ### Heat map
 # To visualize the expression differences among samples for the DE genes identified.
 ##########################################################################################
-png('MKK2OX_vs_WT_heatmap_power_.8.png', width = 700,height = 1000)
+png('MKK2OX_vs_WT_heatmap_power_.8.png', width = 700,height = 8000)
 par(mar= c(15,15,15,15))
 coolmap((log2cpm_expressed[ match(de_mkk2ox_vs_wt_.8$gene_id, row.names(log2cpm_expressed)),]),
         keysize = 1, cexRow= .9, margins = c(10,10), main="Heat Map MKK2OX vs WT (Power = 0.8)")
 dev.off()
-png('MKK2OX_vs_WT_heatmap_power_.9.png', width = 700,height = 1000)
+png('MKK2OX_vs_WT_heatmap_power_.9.png', width = 700,height = 6000)
 par(mar= c(15,15,15,15))
 coolmap((log2cpm_expressed[ match(de_mkk2ox_vs_wt_.9$gene_id, row.names(log2cpm_expressed)),]),
         keysize = 1, cexRow= .9, margins = c(10,10), main="Heat Map MKK2OX vs WT (Power = 0.9)")
 dev.off()
-png('MKK2OX_vs_WT_heatmap_LFC_3.5.png', width = 700,height = 1000)
+png('MKK2OX_vs_WT_heatmap_LFC_3.5.png', width = 700,height = 1500)
 par(mar= c(15,15,15,15))
 coolmap((log2cpm_expressed[ match(de_mkk2ox_vs_wt_3.5$gene_id, row.names(log2cpm_expressed)),]),
-        keysize = 1, cexRow= .9, margins = c(10,10), main="Heat Map MKK2OX vs WT (LFC Cutoff = 3.5)")
+        keysize = 1, cexRow= .9, margins = c(10,10), main="Heat Map MKK2OX vs WT (FC Cutoff = 3.5)")
 dev.off()
 
 
@@ -942,7 +997,9 @@ dev.off()
 # To visualize log fold changes for different genes.
 ##########################################################################################
 # Code based off https://www.r-bloggers.com/2014/05/using-volcano-plots-in-r-to-visualize-microarray-and-rna-seq-results/
+
 head(de_mkk2ox_vs_wt_.8)
+png("MKK2_OX_vs_WT_volcano_.8.png", width = 700, height = 900)
 with(de_mkk2ox_vs_wt_.8, plot(logFC, -log10(PValue), pch=20, main="Volcano Plot MKK2OX vs WT (Power = 0.8)", xlim=c(-10,10)))
 # Add colored points: red if -log10(PValue)>8, orange if log2FC>2, green if both)
 with(subset(de_mkk2ox_vs_wt_.8, -log10(PValue)>7 ), points(logFC, -log10(PValue), pch=20, col="red"))
@@ -954,6 +1011,38 @@ library(calibrate)
 # Shortening gene_id
 de_mkk2ox_vs_wt_.8<- de_mkk2ox_vs_wt_.8 %>% mutate_at(~gsub("gene-", "", .), .vars = 1)
 with(subset(de_mkk2ox_vs_wt_.8, -log10(PValue)>7 & abs(logFC)>2), textxy(logFC, -log10(PValue), labs=gene_id, cex=.6))
+dev.off()
+
+
+
+png("MKK2_OX_vs_WT_volcano_.9.png", width = 700, height = 900)
+with(de_mkk2ox_vs_wt_.9, plot(logFC, -log10(PValue), pch=20, main="Volcano Plot MKK2OX vs WT (Power = 0.9)", xlim=c(-10,10)))
+# Add colored points: red if -log10(PValue)>8, orange if log2FC>2, green if both)
+with(subset(de_mkk2ox_vs_wt_.9, -log10(PValue)>7 ), points(logFC, -log10(PValue), pch=20, col="red"))
+with(subset(de_mkk2ox_vs_wt_.9, abs(logFC)>2), points(logFC, -log10(PValue), pch=20, col="orange"))
+with(subset(de_mkk2ox_vs_wt_.9, -log10(PValue)>7 & abs(logFC)>2), points(logFC, -log10(PValue), pch=20, col="green"))
+
+library(calibrate)
+# Trying to add labels
+# Shortening gene_id
+de_mkk2ox_vs_wt_.9<- de_mkk2ox_vs_wt_.9 %>% mutate_at(~gsub("gene-", "", .), .vars = 1)
+with(subset(de_mkk2ox_vs_wt_.9, -log10(PValue)>7 & abs(logFC)>2), textxy(logFC, -log10(PValue), labs=gene_id, cex=.6))
+dev.off()
+
+
+png("MKK2_OX_vs_WT_volcano_.3.5.png", width = 700, height = 900)
+with(de_mkk2ox_vs_wt_3.5, plot(logFC, -log10(PValue), pch=20, main="Volcano Plot MKK2OX vs WT (FC Cutoff = 3.5)", xlim=c(-10,10)))
+# Add colored points: red if -log10(PValue)>8, orange if log2FC>2, green if both)
+with(subset(de_mkk2ox_vs_wt_3.5, -log10(PValue)>7 ), points(logFC, -log10(PValue), pch=20, col="red"))
+with(subset(de_mkk2ox_vs_wt_3.5, abs(logFC)>2), points(logFC, -log10(PValue), pch=20, col="orange"))
+with(subset(de_mkk2ox_vs_wt_3.5, -log10(PValue)>7 & abs(logFC)>2), points(logFC, -log10(PValue), pch=20, col="green"))
+
+library(calibrate)
+# Trying to add labels
+# Shortening gene_id
+de_mkk2ox_vs_wt_3.5<- de_mkk2ox_vs_wt_3.5 %>% mutate_at(~gsub("gene-", "", .), .vars = 1)
+with(subset(de_mkk2ox_vs_wt_3.5, -log10(PValue)>7 & abs(logFC)>2), textxy(logFC, -log10(PValue), labs=gene_id, cex=.6))
+dev.off()
 
 ##########################################################################################
 ### Tests for over-represented GO and KEGG pathway terms
@@ -1178,28 +1267,24 @@ print(nrow(de_mkk2ox_vs_camkk2ox_.9))
 head(de_mkk2ox_vs_camkk2ox_3.5)
 print(nrow(de_mkk2ox_vs_camkk2ox_3.5))
 
-#looking for duplicates
-de_mkk2ox_vs_camkk2ox[duplicated(de_mkk2ox_vs_camkk2ox$gene_id),]
-dim(de_mkk2ox_vs_camkk2ox[duplicated(de_mkk2ox_vs_camkk2ox$gene_id),])[1]
-
 
 ##########################################################################################
 ### Heat map
 # To visualize the expression differences among samples for the DE genes identified.
 ##########################################################################################
-png('MKK2OX_vs_CAMKK2OX_heatmap_.8.png', width = 600,height = 800)
+png('MKK2OX_vs_CAMKK2OX_heatmap_.8.png', width = 600,height = 10000)
 coolmap((log2cpm_expressed[ match(de_mkk2ox_vs_camkk2ox_.8$gene_id, row.names(log2cpm_expressed)),]),
         keysize = 1, cexRow= .9, margins = c(10,10), main="Heat Map MKK2OX vs CAMKK2OX (Power = 0.8)")
 dev.off()
 
-png('MKK2OX_vs_CAMKK2OX_heatmap_.9.png', width = 600,height = 800)
+png('MKK2OX_vs_CAMKK2OX_heatmap_.9.png', width = 600,height = 7000)
 coolmap((log2cpm_expressed[ match(de_mkk2ox_vs_camkk2ox_.9$gene_id, row.names(log2cpm_expressed)),]),
         keysize = 1, cexRow= .9, margins = c(10,10), main="Heat Map MKK2OX vs CAMKK2OX (Power = 0.9)")
 dev.off()
 
-png('MKK2OX_vs_CAMKK2OX_heatmap_3.5.png', width = 600,height = 800)
+png('MKK2OX_vs_CAMKK2OX_heatmap_3.5.png', width = 600,height = 1500)
 coolmap((log2cpm_expressed[ match(de_mkk2ox_vs_camkk2ox_3.5$gene_id, row.names(log2cpm_expressed)),]),
-        keysize = 1, cexRow= .9, margins = c(10,10), main="Heat Map MKK2OX vs CAMKK2OX (LFC Cutoff = 3.5)")
+        keysize = 1, cexRow= .9, margins = c(10,10), main="Heat Map MKK2OX vs CAMKK2OX (FC Cutoff = 3.5)")
 dev.off()
 
 
@@ -1209,6 +1294,8 @@ dev.off()
 ##########################################################################################
 # Code based off https://www.r-bloggers.com/2014/05/using-volcano-plots-in-r-to-visualize-microarray-and-rna-seq-results/
 head(de_mkk2ox_vs_camkk2ox_.8)
+
+png("MKK2_OX_vs_CAMKK2OX_volcano_.8.png", width = 700, height = 1000)
 with(de_mkk2ox_vs_camkk2ox_.8, plot(logFC, -log10(PValue), pch=20, main="Volcano Plot MKK2OX vs CAMKK2OX (Power = 0.8)", xlim=c(-8,10)))
 # Add colored points: red if -log10(PValue)>8, orange if log2FC>2, green if both)
 with(subset(de_mkk2ox_vs_camkk2ox_.8, -log10(PValue)>7 ), points(logFC, -log10(PValue), pch=20, col="red"))
@@ -1220,6 +1307,39 @@ library(calibrate)
 # Shortening gene_id
 de_mkk2ox_vs_camkk2ox_.8<- de_mkk2ox_vs_camkk2ox_.8 %>% mutate_at(~gsub("gene-", "", .), .vars = 1)
 with(subset(de_mkk2ox_vs_camkk2ox_.8, -log10(PValue)>7 & abs(logFC)>2), textxy(logFC, -log10(PValue), labs=gene_id, cex=.6))
+dev.off()
+
+
+png("MKK2_OX_vs_CAMKK2OX_volcano_.9.png", width = 700, height = 1000)
+with(de_mkk2ox_vs_camkk2ox_.9, plot(logFC, -log10(PValue), pch=20, main="Volcano Plot MKK2OX vs CAMKK2OX (Power = 0.9)", xlim=c(-8,10)))
+# Add colored points: red if -log10(PValue)>8, orange if log2FC>2, green if both)
+with(subset(de_mkk2ox_vs_camkk2ox_.9, -log10(PValue)>7 ), points(logFC, -log10(PValue), pch=20, col="red"))
+with(subset(de_mkk2ox_vs_camkk2ox_.9, abs(logFC)>2), points(logFC, -log10(PValue), pch=20, col="orange"))
+with(subset(de_mkk2ox_vs_camkk2ox_.9, -log10(PValue)>7 & abs(logFC)>2), points(logFC, -log10(PValue), pch=20, col="green"))
+
+library(calibrate)
+# Trying to add labels
+# Shortening gene_id
+de_mkk2ox_vs_camkk2ox_.9<- de_mkk2ox_vs_camkk2ox_.9 %>% mutate_at(~gsub("gene-", "", .), .vars = 1)
+with(subset(de_mkk2ox_vs_camkk2ox_.9, -log10(PValue)>7 & abs(logFC)>2), textxy(logFC, -log10(PValue), labs=gene_id, cex=.6))
+dev.off()
+
+
+head(de_mkk2ox_vs_camkk2ox_3.5)
+
+png("MKK2_OX_vs_CAMKK2OX_volcano_.3.5.png", width = 700, height = 1000)
+with(de_mkk2ox_vs_camkk2ox_3.5, plot(logFC, -log10(PValue), pch=20, main="Volcano Plot MKK2OX vs CAMKK2OX (FC Cutoff = 3.5)", xlim=c(-8,10)))
+# Add colored points: red if -log10(PValue)>8, orange if log2FC>2, green if both)
+with(subset(de_mkk2ox_vs_camkk2ox_3.5, -log10(PValue)>7 ), points(logFC, -log10(PValue), pch=20, col="red"))
+with(subset(de_mkk2ox_vs_camkk2ox_3.5, abs(logFC)>2), points(logFC, -log10(PValue), pch=20, col="orange"))
+with(subset(de_mkk2ox_vs_camkk2ox_3.5, -log10(PValue)>7 & abs(logFC)>2), points(logFC, -log10(PValue), pch=20, col="green"))
+
+library(calibrate)
+# Trying to add labels
+# Shortening gene_id
+de_mkk2ox_vs_camkk2ox_3.5<- de_mkk2ox_vs_camkk2ox_3.5 %>% mutate_at(~gsub("gene-", "", .), .vars = 1)
+with(subset(de_mkk2ox_vs_camkk2ox_3.5, -log10(PValue)>7 & abs(logFC)>2), textxy(logFC, -log10(PValue), labs=gene_id, cex=.6))
+dev.off()
 
 ##########################################################################################
 ### Tests for over-represented GO and KEGG pathway terms
