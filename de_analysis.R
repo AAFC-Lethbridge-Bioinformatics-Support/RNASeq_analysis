@@ -1405,7 +1405,36 @@ write.table( downregulated_mkk2ox_vs_camkk2ox_all_info_3.5, file="MKK2OX_vs_CAMK
 # expressed genes as the background.
 
 
+##########################################################################################
+### Creating excel sheets.
+##########################################################################################
+install.packages("writexl")
+library("writexl")
+write_xlsx(downregulated_camkk2ox_vs_wt_all_info_.8,"CAMKK2OX_vs_WT_dowregulated_all_info_.8.xlsx")
+write_xlsx(downregulated_camkk2ox_vs_wt_all_info_.9,"CAMKK2OX_vs_WT_dowregulated_all_info_.9.xlsx")
+write_xlsx(downregulated_camkk2ox_vs_wt_all_info_3.5,"CAMKK2OX_vs_WT_dowregulated_all_info_3.5.xlsx")
 
+write_xlsx(downregulated_mkk2ox_vs_camkk2ox_all_info_.8,"MKK2OX_vs_CAMKK2OX_downregulated_all_info_.8.xlsx")
+write_xlsx(downregulated_mkk2ox_vs_camkk2ox_all_info_.9,"MKK2OX_vs_CAMKK2OX_downregulated_all_info_.9.xlsx")
+write_xlsx(downregulated_mkk2ox_vs_camkk2ox_all_info_3.5,"MKK2OX_vs_CAMKK2OX_downregulated_all_info_3.5.xlsx")
+
+write_xlsx(downregulated_mkk2ox_vs_wt_all_info_.8,"MKK2OX_vs_WT_downregulated_all_info_.8.xlsx")
+write_xlsx(downregulated_mkk2ox_vs_wt_all_info_.9,"MKK2OX_vs_WT_downregulated_all_info_.9.xlsx")
+write_xlsx(downregulated_mkk2ox_vs_wt_all_info_3.5,"MKK2OX_vs_WT_downregulated_all_info_3.5.xlsx")
+
+
+
+write_xlsx(upregulated_camkk2ox_vs_wt_all_info_.8,"CAMKK2OX_vs_WT_upregulated_all_info_.8.xlsx")
+write_xlsx(upregulated_camkk2ox_vs_wt_all_info_.9,"CAMKK2OX_vs_WT_upregulated_all_info_.9.xlsx")
+write_xlsx(upregulated_camkk2ox_vs_wt_all_info_3.5,"CAMKK2OX_vs_WT_upregulated_all_info_3.5.xlsx")
+
+write_xlsx(upregulated_mkk2ox_vs_camkk2ox_all_info_.8,"MKK2OX_vs_CAMKK2OX_upregulated_all_info_.8.xlsx")
+write_xlsx(upregulated_mkk2ox_vs_camkk2ox_all_info_.9,"MKK2OX_vs_CAMKK2OX_upregulated_all_info_.9.xlsx")
+write_xlsx(upregulated_mkk2ox_vs_camkk2ox_all_info_3.5,"MKK2OX_vs_CAMKK2OX_upregulated_all_info_3.5.xlsx")
+
+write_xlsx(upregulated_mkk2ox_vs_wt_all_info_.8,"MKK2OX_vs_WT_upregulated_all_info_.8.xlsx")
+write_xlsx(upregulated_mkk2ox_vs_wt_all_info_.9,"MKK2OX_vs_WT_upregulated_all_info_.9.xlsx")
+write_xlsx(upregulated_mkk2ox_vs_wt_all_info_3.5,"MKK2OX_vs_WT_upregulated_all_info_3.5.xlsx")
 
 
 
