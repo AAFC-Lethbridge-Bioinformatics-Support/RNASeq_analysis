@@ -93,7 +93,7 @@ FDR_cutoff <- 0.05
 # CRAN packages (https://cran.r-project.org/)
 .libPaths("refGenome")
 .libPaths()
-.libPaths(c(.libPaths(), "/isilon/lethbridge-rdc/training/R_env"))
+.libPaths(c(.libPaths(), "/isilon/lethbridge-rdc/training/R_env", "/tmp/RtmpCxUvBo/downloaded_packages"))
 library(refGenome)
 # For Gene and Splice Site Annotation Using Annotation Data from 'Ensembl' and 'UCSC'
 # Genome Browsers [https://CRAN.R-project.org/package=refGenome]
@@ -638,8 +638,8 @@ abline(v=1.84, h=0.9, col="red")
 abline(v=1.71, h=0.8, col="blue")
 dev.off()
 
-# Note from the plot that fold changes of 1.6 can be detected at a power of 0.8
-# Note from the plot that fold changes of 1.75 can be detected at a power of 0.9
+# Note from the plot that fold changes of 1.71 can be detected at a power of 0.8
+# Note from the plot that fold changes of 1.84 can be detected at a power of 0.9
 fold_change_cutoff_p_8_camkk2_vs_wt=1.71
 fold_change_cutoff_p_9_camkk2_vs_wt=1.84
 fold_change_cutoff_3.5=3.5
@@ -673,22 +673,47 @@ print(nrow(de_camkk2ox_vs_wt_3.5))
 ### Heat map
 # To visualize the expression differences among samples for the DE genes identified.
 ##########################################################################################
-png('CAMKK2OX_vs_WT_heatmap_.8.png', width = 1000,height = 10000)
+# Creating heatmaps ordered based on similarity
+png('CAMKK2OX_vs_WT_heatmap_similarity.8.png', width = 1000,height = 10000)
 par(mar= c(10,10,10,10))
 coolmap((log2cpm_expressed[ match(de_camkk2ox_vs_wt_.8$gene_id, row.names(log2cpm_expressed)),]),
         keysize = 1, cexRow= .9, margins = c(10,10), main="Heat Map CAMKK2OX vs WT (Power = 0.8)")
 dev.off()
 
-png('CAMKK2OX_vs_WT_heatmap_.9.png', width = 1000,height = 10000)
+png('CAMKK2OX_vs_WT_heatmap_similarity_.9.png', width = 1000,height = 10000)
 par(mar= c(10,10,10,10))
 coolmap((log2cpm_expressed[ match(de_camkk2ox_vs_wt_.9$gene_id, row.names(log2cpm_expressed)),]),
         keysize = 1, cexRow= .9, margins = c(10,10), main="Heat Map CAMKK2OX vs WT (Power = 0.9)")
 dev.off()
 
-png('CAMKK2OX_vs_WT_heatmap_3.5.png', width = 1000,height = 10000)
+png('CAMKK2OX_vs_WT_heatmap_similarity_3.5.png', width = 1000,height = 10000)
 par(mar= c(10,10,10,10))
 coolmap((log2cpm_expressed[ match(de_camkk2ox_vs_wt_3.5$gene_id, row.names(log2cpm_expressed)),]),
         keysize = 1, cexRow= .9, margins = c(10,10), main="Heat Map CAMKK2OX vs WT (FC Cutoff = 3.5)")
+dev.off()
+
+
+
+
+# Heat maps, ordered by treatment (rather than similarity)
+png('CAMKK2OX_vs_WT_heatmap_treatment_3.5.png', width = 1000,height = 9000)
+par(mar= c(10,10,10,10))
+coolmap((log2cpm_expressed[ match(de_camkk2ox_vs_wt_3.5$gene_id, row.names(log2cpm_expressed)),]),
+        keysize = 1, cexRow= .9, margins = c(10,10), linkage.col = "none",
+        main="Heat Map CAMKK2OX vs WT (FC Cutoff = 3.5)")
+dev.off()
+png('CAMKK2OX_vs_WT_heatmap_treatment.8.png', width = 1000,height = 10000)
+par(mar= c(10,10,10,10))
+coolmap((log2cpm_expressed[ match(de_camkk2ox_vs_wt_.8$gene_id, row.names(log2cpm_expressed)),]),
+        keysize = 1, cexRow= .9, margins = c(10,10), linkage.col = "none",
+        main="Heat Map CAMKK2OX vs WT (Power = 0.8)")
+dev.off()
+
+png('CAMKK2OX_vs_WT_heatmap_treatment.9.png', width = 1000,height = 10000)
+par(mar= c(10,10,10,10))
+coolmap((log2cpm_expressed[ match(de_camkk2ox_vs_wt_.9$gene_id, row.names(log2cpm_expressed)),]),
+        keysize = 1, cexRow= .9, margins = c(10,10), linkage.col = "none",
+        main="Heat Map CAMKK2OX vs WT (Power = 0.9)")
 dev.off()
 
 
@@ -732,7 +757,7 @@ dev.off()
 head(de_camkk2ox_vs_wt_3.5)
 png("CAMKK2_OX_vs_WT_volcano_3.5.png", width = 700, height = 1500)
 with(de_camkk2ox_vs_wt_3.5, plot(logFC, -log10(PValue), pch=20, main="Volcano Plot CAMKK2OX vs WT (FC Cutoff = 3.5)", xlim=c(-20,10)))
-# Add colored points: red if -log10(PValue)>8, orange if log2FC>2, green if both)
+# Add colored points: red if -log10(PValue)>7, orange if log2FC>2, green if both)
 with(subset(de_camkk2ox_vs_wt_3.5, -log10(PValue)>7 ), points(logFC, -log10(PValue), pch=20, col="red"))
 with(subset(de_camkk2ox_vs_wt_3.5, abs(logFC)>2), points(logFC, -log10(PValue), pch=20, col="orange"))
 with(subset(de_camkk2ox_vs_wt_3.5, -log10(PValue)>7 & abs(logFC)>2), points(logFC, -log10(PValue), pch=20, col="green"))
@@ -759,11 +784,9 @@ dev.off()
 # (http://pantherdb.org/). We test the enrichments seperately for up- and down-regulated 
 # genes.
 ##########################################################################################
-
-# Upregulated gene_ids
+# Writing .txt files with results.
 upregulated_camkk2ox_vs_wt_ids_.8 <- de_camkk2ox_vs_wt_.8$gene_id[ de_camkk2ox_vs_wt_.8$logFC>0 ]
 write.table( upregulated_camkk2ox_vs_wt_ids_.8, file="CAMKK2OX_vs_WT_upregulated_ids_.8.txt", col.names = F, row.names = F, quote=F)
-# Upregulated genes_ids w/ info on PValues and logFC etc.
 upregulated_camkk2ox_vs_wt_all_info_.8 <- filter(de_camkk2ox_vs_wt_.8, de_camkk2ox_vs_wt_.8$logFC>0)
 write.table( upregulated_camkk2ox_vs_wt_all_info_.8, file="CAMKK2OX_vs_WT_upregulated_all_info_.8.txt", col.names = T, row.names = F, quote=F)
 
@@ -776,7 +799,6 @@ write.table( downregulated_camkk2ox_vs_wt_all_info_.8, file="CAMKK2OX_vs_WT_down
 
 upregulated_camkk2ox_vs_wt_ids_.9 <- de_camkk2ox_vs_wt_.9$gene_id[ de_camkk2ox_vs_wt_.9$logFC>0 ]
 write.table( upregulated_camkk2ox_vs_wt_ids_.9, file="CAMKK2OX_vs_WT_upregulated_ids_.9.txt", col.names = F, row.names = F, quote=F)
-# Upregulated genes_ids w/ info on PValues and logFC etc.
 upregulated_camkk2ox_vs_wt_all_info_.9 <- filter(de_camkk2ox_vs_wt_.9, de_camkk2ox_vs_wt_.9$logFC>0)
 write.table( upregulated_camkk2ox_vs_wt_all_info_.9, file="CAMKK2OX_vs_WT_upregulated_all_info_.9.txt", col.names = T, row.names = F, quote=F)
 
@@ -789,7 +811,6 @@ write.table( downregulated_camkk2ox_vs_wt_all_info_.9, file="CAMKK2OX_vs_WT_down
 
 upregulated_camkk2ox_vs_wt_ids_3.5 <- de_camkk2ox_vs_wt_3.5$gene_id[ de_camkk2ox_vs_wt_3.5$logFC>0 ]
 write.table( upregulated_camkk2ox_vs_wt_ids_3.5, file="CAMKK2OX_vs_WT_upregulated_ids_3.5.txt", col.names = F, row.names = F, quote=F)
-# Upregulated genes_ids w/ info on PValues and logFC etc.
 upregulated_camkk2ox_vs_wt_all_info_3.5 <- filter(de_camkk2ox_vs_wt_3.5, de_camkk2ox_vs_wt_3.5$logFC>0)
 write.table( upregulated_camkk2ox_vs_wt_all_info_3.5, file="CAMKK2OX_vs_WT_upregulated_all_info_3.5.txt", col.names = T, row.names = F, quote=F)
 
@@ -945,8 +966,8 @@ abline(v=1.56, h=0.8, col="blue")
 dev.off()
 
 
-# Note from the plot that fold changes of 1.6 can be detected at a power of 0.8
-# Note from the plot that fold changes of 1.75 can be detected at a power of 0.9
+# Note from the plot that fold changes of 1.56 can be detected at a power of 0.8
+# Note from the plot that fold changes of 1.68 can be detected at a power of 0.9
 fold_change_cutoff_p_8_mkk_vs_wt=1.56
 fold_change_cutoff_p_9_mkk_vs_wt=1.68
 
@@ -974,22 +995,43 @@ print(nrow(de_mkk2ox_vs_wt_3.5))
 ### Heat map
 # To visualize the expression differences among samples for the DE genes identified.
 ##########################################################################################
-png('MKK2OX_vs_WT_heatmap_power_.8.png', width = 700,height = 8000)
+# Creating heatmaps ordered based on similarity
+png('MKK2OX_vs_WT_heatmap_similarity_.8.png', width = 700,height = 8000)
 par(mar= c(15,15,15,15))
 coolmap((log2cpm_expressed[ match(de_mkk2ox_vs_wt_.8$gene_id, row.names(log2cpm_expressed)),]),
         keysize = 1, cexRow= .9, margins = c(10,10), main="Heat Map MKK2OX vs WT (Power = 0.8)")
 dev.off()
-png('MKK2OX_vs_WT_heatmap_power_.9.png', width = 700,height = 6000)
+png('MKK2OX_vs_WT_heatmap_similarity_.9.png', width = 700,height = 6000)
 par(mar= c(15,15,15,15))
 coolmap((log2cpm_expressed[ match(de_mkk2ox_vs_wt_.9$gene_id, row.names(log2cpm_expressed)),]),
         keysize = 1, cexRow= .9, margins = c(10,10), main="Heat Map MKK2OX vs WT (Power = 0.9)")
 dev.off()
-png('MKK2OX_vs_WT_heatmap_LFC_3.5.png', width = 700,height = 1500)
+png('MKK2OX_vs_WT_heatmap_similarity_3.5.png', width = 700,height = 1500)
 par(mar= c(15,15,15,15))
 coolmap((log2cpm_expressed[ match(de_mkk2ox_vs_wt_3.5$gene_id, row.names(log2cpm_expressed)),]),
         keysize = 1, cexRow= .9, margins = c(10,10), main="Heat Map MKK2OX vs WT (FC Cutoff = 3.5)")
 dev.off()
 
+
+# Creating heatmaps ordered based on treatment
+png('MKK2OX_vs_WT_heatmap_treatment_.8.png', width = 700,height = 8000)
+par(mar= c(15,15,15,15))
+coolmap((log2cpm_expressed[ match(de_mkk2ox_vs_wt_.8$gene_id, row.names(log2cpm_expressed)),]),
+        keysize = 1, cexRow= .9, margins = c(10,10), linkage.col = "none",
+        main="Heat Map MKK2OX vs WT (Power = 0.8)")
+dev.off()
+png('MKK2OX_vs_WT_heatmap_treatment_.9.png', width = 700,height = 6000)
+par(mar= c(15,15,15,15))
+coolmap((log2cpm_expressed[ match(de_mkk2ox_vs_wt_.9$gene_id, row.names(log2cpm_expressed)),]),
+        keysize = 1, cexRow= .9, margins = c(10,10), linkage.col = "none",
+        main="Heat Map MKK2OX vs WT (Power = 0.9)")
+dev.off()
+png('MKK2OX_vs_WT_heatmap_treamtent_3.5.png', width = 700,height = 1500)
+par(mar= c(15,15,15,15))
+coolmap((log2cpm_expressed[ match(de_mkk2ox_vs_wt_3.5$gene_id, row.names(log2cpm_expressed)),]),
+        keysize = 1, cexRow= .9, margins = c(10,10), linkage.col = "none", 
+        main="Heat Map MKK2OX vs WT (FC Cutoff = 3.5)")
+dev.off()
 
 
 ##########################################################################################
@@ -1017,7 +1059,7 @@ dev.off()
 
 png("MKK2_OX_vs_WT_volcano_.9.png", width = 700, height = 900)
 with(de_mkk2ox_vs_wt_.9, plot(logFC, -log10(PValue), pch=20, main="Volcano Plot MKK2OX vs WT (Power = 0.9)", xlim=c(-10,10)))
-# Add colored points: red if -log10(PValue)>8, orange if log2FC>2, green if both)
+# Add colored points: red if -log10(PValue)>7, orange if log2FC>2, green if both)
 with(subset(de_mkk2ox_vs_wt_.9, -log10(PValue)>7 ), points(logFC, -log10(PValue), pch=20, col="red"))
 with(subset(de_mkk2ox_vs_wt_.9, abs(logFC)>2), points(logFC, -log10(PValue), pch=20, col="orange"))
 with(subset(de_mkk2ox_vs_wt_.9, -log10(PValue)>7 & abs(logFC)>2), points(logFC, -log10(PValue), pch=20, col="green"))
@@ -1059,6 +1101,7 @@ dev.off()
 # (http://pantherdb.org/). We test the enrichments seperately for up- and down-regulated 
 # genes.
 ##########################################################################################
+# Writing .txt files with results.
 upregulated_mkk2ox_vs_wt_ids_.8 <- de_mkk2ox_vs_wt_.8$gene_id[ de_mkk2ox_vs_wt_.8$logFC>0 ]
 write.table( upregulated_mkk2ox_vs_wt_ids_.8, file="MKK2OX_vs_WT_upregulated_ids_.8.txt", col.names = F, row.names = F, quote=F)
 upregulated_mkk2ox_vs_wt_all_info_.8 <- filter(de_mkk2ox_vs_wt_.8, de_mkk2ox_vs_wt_.8$logFC>0)
@@ -1242,8 +1285,8 @@ abline(v=1.61, h=0.9, col="red")
 abline(v=1.52, h=0.8, col="blue")
 dev.off()
 
-# Note from the plot that fold changes of 1.6 can be detected at a power of 0.8
-# Note from the plot that fold changes of 1.75 can be detected at a power of 0.9
+# Note from the plot that fold changes of 1.52 can be detected at a power of 0.8
+# Note from the plot that fold changes of 1.51 can be detected at a power of 0.9
 fold_change_cutoff_p_8_mkk2_vs_camkk2=1.52
 fold_change_cutoff_p_9_mkk2_vs_camkk2=1.61
 
@@ -1272,21 +1315,40 @@ print(nrow(de_mkk2ox_vs_camkk2ox_3.5))
 ### Heat map
 # To visualize the expression differences among samples for the DE genes identified.
 ##########################################################################################
-png('MKK2OX_vs_CAMKK2OX_heatmap_.8.png', width = 600,height = 10000)
+png('MKK2OX_vs_CAMKK2OX_heatmap_similarity_.8.png', width = 600,height = 10000)
 coolmap((log2cpm_expressed[ match(de_mkk2ox_vs_camkk2ox_.8$gene_id, row.names(log2cpm_expressed)),]),
-        keysize = 1, cexRow= .9, margins = c(10,10), main="Heat Map MKK2OX vs CAMKK2OX (Power = 0.8)")
+        keysize = 1, cexRow= .9, margins = c(10,10), main="MKK2OX vs CAMKK2OX (Power = 0.8)")
 dev.off()
 
-png('MKK2OX_vs_CAMKK2OX_heatmap_.9.png', width = 600,height = 7000)
+png('MKK2OX_vs_CAMKK2OX_heatmap_similarity_.9.png', width = 600,height = 7000)
 coolmap((log2cpm_expressed[ match(de_mkk2ox_vs_camkk2ox_.9$gene_id, row.names(log2cpm_expressed)),]),
-        keysize = 1, cexRow= .9, margins = c(10,10), main="Heat Map MKK2OX vs CAMKK2OX (Power = 0.9)")
+        keysize = 1, cexRow= .9, margins = c(10,10), main="MKK2OX vs CAMKK2OX (Power = 0.9)")
 dev.off()
 
-png('MKK2OX_vs_CAMKK2OX_heatmap_3.5.png', width = 600,height = 1500)
+png('MKK2OX_vs_CAMKK2OX_heatmap_similarity_.3.5.png', width = 600,height = 1500)
 coolmap((log2cpm_expressed[ match(de_mkk2ox_vs_camkk2ox_3.5$gene_id, row.names(log2cpm_expressed)),]),
-        keysize = 1, cexRow= .9, margins = c(10,10), main="Heat Map MKK2OX vs CAMKK2OX (FC Cutoff = 3.5)")
+        keysize = 1, cexRow= .9, margins = c(10,10), main="MKK2OX vs CAMKK2OX (FC Cutoff = 3.5)")
 dev.off()
 
+
+# Heat maps, ordered by treatment:
+png('MKK2OX_vs_CAMKK2OX_heatmap_treatment_.8.png', width = 600,height = 10000)
+coolmap((log2cpm_expressed[ match(de_mkk2ox_vs_camkk2ox_.8$gene_id, row.names(log2cpm_expressed)),]),
+        keysize = 1, cexRow= .9, margins = c(10,10), linkage.col = "none",
+        main="MKK2OX vs CAMKK2OX (Power = 0.8)")
+dev.off()
+
+png('MKK2OX_vs_CAMKK2OX_heatmap_treatment_.9.png', width = 600,height = 7000)
+coolmap((log2cpm_expressed[ match(de_mkk2ox_vs_camkk2ox_.9$gene_id, row.names(log2cpm_expressed)),]),
+        keysize = 1, cexRow= .9, margins = c(10,10), linkage.col = "none",
+        main="MKK2OX vs CAMKK2OX (Power = 0.9)")
+dev.off()
+
+png('MKK2OX_vs_CAMKK2OX_heatmap_treatment_3.5.png', width = 600,height = 1500)
+coolmap((log2cpm_expressed[ match(de_mkk2ox_vs_camkk2ox_3.5$gene_id, row.names(log2cpm_expressed)),]),
+        keysize = 1, cexRow= .9, margins = c(10,10), linkage.col = "none",
+        main="MKK2OX vs CAMKK2OX (FC Cutoff = 3.5)")
+dev.off()
 
 ##########################################################################################
 ### Volcano plots
@@ -1297,7 +1359,7 @@ head(de_mkk2ox_vs_camkk2ox_.8)
 
 png("MKK2_OX_vs_CAMKK2OX_volcano_.8.png", width = 700, height = 1000)
 with(de_mkk2ox_vs_camkk2ox_.8, plot(logFC, -log10(PValue), pch=20, main="Volcano Plot MKK2OX vs CAMKK2OX (Power = 0.8)", xlim=c(-8,10)))
-# Add colored points: red if -log10(PValue)>8, orange if log2FC>2, green if both)
+# Add colored points: red if -log10(PValue)>7, orange if log2FC>2, green if both)
 with(subset(de_mkk2ox_vs_camkk2ox_.8, -log10(PValue)>7 ), points(logFC, -log10(PValue), pch=20, col="red"))
 with(subset(de_mkk2ox_vs_camkk2ox_.8, abs(logFC)>2), points(logFC, -log10(PValue), pch=20, col="orange"))
 with(subset(de_mkk2ox_vs_camkk2ox_.8, -log10(PValue)>7 & abs(logFC)>2), points(logFC, -log10(PValue), pch=20, col="green"))
@@ -1356,41 +1418,53 @@ dev.off()
 # (http://pantherdb.org/). We test the enrichments seperately for up- and down-regulated 
 # genes.
 ##########################################################################################
-
+# Writing .txt files with results.
 upregulated_mkk2ox_vs_camkk2ox_ids_.8 <- de_mkk2ox_vs_camkk2ox_.8$gene_id[ de_mkk2ox_vs_camkk2ox_.8$logFC>0 ]
-write.table( upregulated_mkk2ox_vs_camkk2ox_ids_.8, file="MKK2OX_vs_CAMKK2OX_upregulated_ids_.8.txt", col.names = F, row.names = F, quote=F)
+write.table( upregulated_mkk2ox_vs_camkk2ox_ids_.8, 
+             file="MKK2OX_vs_CAMKK2OX_upregulated_ids_.8.txt", col.names = F, row.names = F, quote=F)
 upregulated_mkk2ox_vs_camkk2ox_all_info_.8 <- filter(de_mkk2ox_vs_camkk2ox_.8, de_mkk2ox_vs_camkk2ox_.8$logFC>0)
-write.table( upregulated_mkk2ox_vs_camkk2ox_all_info_.8, file="MKK2OX_vs_CAMKK2OX_upregulated_all_info_.8.txt", col.names = T, row.names = F, quote=F)
+write.table( upregulated_mkk2ox_vs_camkk2ox_all_info_.8, 
+             file="MKK2OX_vs_CAMKK2OX_upregulated_all_info_.8.txt", col.names = T, row.names = F, quote=F)
 
 downregulated_mkk2ox_vs_camkk2ox_ids_.8 <- de_mkk2ox_vs_camkk2ox_.8$gene_id[ de_mkk2ox_vs_camkk2ox_.8$logFC<0 ]
-write.table( downregulated_mkk2ox_vs_camkk2ox_ids_.8, file="MKK2OX_vs_CAMKK2OX_downregulated_ids_.8.txt", col.names = F, row.names = F, quote=F)
+write.table( downregulated_mkk2ox_vs_camkk2ox_ids_.8, 
+             file="MKK2OX_vs_CAMKK2OX_downregulated_ids_.8.txt", col.names = F, row.names = F, quote=F)
 downregulated_mkk2ox_vs_camkk2ox_all_info_.8 <- filter(de_mkk2ox_vs_camkk2ox_.8, de_mkk2ox_vs_camkk2ox_.8$logFC<0)
-write.table( downregulated_mkk2ox_vs_camkk2ox_all_info_.8, file="MKK2OX_vs_CAMKK2OX_downregulated_all_info_.8.txt", col.names = T, row.names = F, quote=F)
+write.table( downregulated_mkk2ox_vs_camkk2ox_all_info_.8, 
+             file="MKK2OX_vs_CAMKK2OX_downregulated_all_info_.8.txt", col.names = T, row.names = F, quote=F)
 
 
 
 
 upregulated_mkk2ox_vs_camkk2ox_ids_.9 <- de_mkk2ox_vs_camkk2ox_.9$gene_id[ de_mkk2ox_vs_camkk2ox_.9$logFC>0 ]
-write.table( upregulated_mkk2ox_vs_camkk2ox_ids_.9, file="MKK2OX_vs_CAMKK2OX_upregulated_ids_.9.txt", col.names = F, row.names = F, quote=F)
+write.table( upregulated_mkk2ox_vs_camkk2ox_ids_.9, 
+             file="MKK2OX_vs_CAMKK2OX_upregulated_ids_.9.txt", col.names = F, row.names = F, quote=F)
 upregulated_mkk2ox_vs_camkk2ox_all_info_.9 <- filter(de_mkk2ox_vs_camkk2ox_.9, de_mkk2ox_vs_camkk2ox_.9$logFC>0)
-write.table( upregulated_mkk2ox_vs_camkk2ox_all_info_.9, file="MKK2OX_vs_CAMKK2OX_upregulated_all_info_.9.txt", col.names = T, row.names = F, quote=F)
+write.table( upregulated_mkk2ox_vs_camkk2ox_all_info_.9, 
+             file="MKK2OX_vs_CAMKK2OX_upregulated_all_info_.9.txt", col.names = T, row.names = F, quote=F)
 
 downregulated_mkk2ox_vs_camkk2ox_ids_.9 <- de_mkk2ox_vs_camkk2ox_.9$gene_id[ de_mkk2ox_vs_camkk2ox_.9$logFC<0 ]
-write.table( downregulated_mkk2ox_vs_camkk2ox_ids_.9, file="MKK2OX_vs_CAMKK2OX_downregulated_ids_.9.txt", col.names = F, row.names = F, quote=F)
+write.table( downregulated_mkk2ox_vs_camkk2ox_ids_.9, 
+             file="MKK2OX_vs_CAMKK2OX_downregulated_ids_.9.txt", col.names = F, row.names = F, quote=F)
 downregulated_mkk2ox_vs_camkk2ox_all_info_.9 <- filter(de_mkk2ox_vs_camkk2ox_.9, de_mkk2ox_vs_camkk2ox_.9$logFC<0)
-write.table( downregulated_mkk2ox_vs_camkk2ox_all_info_.9, file="MKK2OX_vs_CAMKK2OX_downregulated_all_info_.9.txt", col.names = T, row.names = F, quote=F)
+write.table( downregulated_mkk2ox_vs_camkk2ox_all_info_.9, 
+             file="MKK2OX_vs_CAMKK2OX_downregulated_all_info_.9.txt", col.names = T, row.names = F, quote=F)
 
 
 
 upregulated_mkk2ox_vs_camkk2ox_ids_3.5 <- de_mkk2ox_vs_camkk2ox_3.5$gene_id[ de_mkk2ox_vs_camkk2ox_3.5$logFC>0 ]
-write.table( upregulated_mkk2ox_vs_camkk2ox_ids_3.5, file="MKK2OX_vs_CAMKK2OX_upregulated_ids_3.5.txt", col.names = F, row.names = F, quote=F)
+write.table( upregulated_mkk2ox_vs_camkk2ox_ids_3.5, 
+             file="MKK2OX_vs_CAMKK2OX_upregulated_ids_3.5.txt", col.names = F, row.names = F, quote=F)
 upregulated_mkk2ox_vs_camkk2ox_all_info_3.5 <- filter(de_mkk2ox_vs_camkk2ox_3.5, de_mkk2ox_vs_camkk2ox_3.5$logFC>0)
-write.table( upregulated_mkk2ox_vs_camkk2ox_all_info_3.5, file="MKK2OX_vs_CAMKK2OX_upregulated_all_info_3.5.txt", col.names = T, row.names = F, quote=F)
+write.table( upregulated_mkk2ox_vs_camkk2ox_all_info_3.5, 
+             file="MKK2OX_vs_CAMKK2OX_upregulated_all_info_3.5.txt", col.names = T, row.names = F, quote=F)
 
 downregulated_mkk2ox_vs_camkk2ox_ids_3.5 <- de_mkk2ox_vs_camkk2ox_3.5$gene_id[ de_mkk2ox_vs_camkk2ox_3.5$logFC<0 ]
-write.table( downregulated_mkk2ox_vs_camkk2ox_ids_3.5, file="MKK2OX_vs_CAMKK2OX_downregulated_ids_3.5.txt", col.names = F, row.names = F, quote=F)
+write.table( downregulated_mkk2ox_vs_camkk2ox_ids_3.5, 
+             file="MKK2OX_vs_CAMKK2OX_downregulated_ids_3.5.txt", col.names = F, row.names = F, quote=F)
 downregulated_mkk2ox_vs_camkk2ox_all_info_3.5 <- filter(de_mkk2ox_vs_camkk2ox_3.5, de_mkk2ox_vs_camkk2ox_3.5$logFC<0)
-write.table( downregulated_mkk2ox_vs_camkk2ox_all_info_3.5, file="MKK2OX_vs_CAMKK2OX_downregulated_all_info_3.5.txt", col.names = T, row.names = F, quote=F)
+write.table( downregulated_mkk2ox_vs_camkk2ox_all_info_3.5, 
+             file="MKK2OX_vs_CAMKK2OX_downregulated_all_info_3.5.txt", col.names = T, row.names = F, quote=F)
 
 
 
@@ -1408,8 +1482,32 @@ write.table( downregulated_mkk2ox_vs_camkk2ox_all_info_3.5, file="MKK2OX_vs_CAMK
 ##########################################################################################
 ### Creating excel sheets.
 ##########################################################################################
-install.packages("writexl")
 library("writexl")
+library("xlsx")
+# camkk2ox_vs_wt_list <- list(downregulated_camkk2ox_vs_wt_all_info_.8,
+#                             downregulated_camkk2ox_vs_wt_all_info_.9,
+#                             downregulated_camkk2ox_vs_wt_all_info_3.5,
+#                             upregulated_camkk2ox_vs_wt_all_info_.8,
+#                             upregulated_camkk2ox_vs_wt_all_info_.9,
+#                             upregulated_camkk2ox_vs_wt_all_info_3.5)
+# write_xlsx(camkk2ox_vs_wt_list,"CAMKK2OX_vs_WT_all_info.xlsx")
+# 
+# mkk2ox_vs_camkk2ox_list <- list(downregulated_mkk2ox_vs_camkk2ox_all_info_.8,
+#                                 downregulated_mkk2ox_vs_camkk2ox_all_info_.9,
+#                                 downregulated_mkk2ox_vs_camkk2ox_all_info_3.5,
+#                                 upregulated_mkk2ox_vs_camkk2ox_all_info_.8,
+#                                 upregulated_mkk2ox_vs_camkk2ox_all_info_.9,
+#                                 upregulated_mkk2ox_vs_camkk2ox_all_info_3.5)
+# write_xlsx(mkk2ox_vs_camkk2ox_list,"MKK2OX_vs_CAMKK2OX_all_info.xlsx")
+# 
+# mkk2ox_vs_wt_list <- list(downregulated_mkk2ox_vs_wt_all_info_.8,
+#                           downregulated_mkk2ox_vs_wt_all_info_.9,
+#                           downregulated_mkk2ox_vs_wt_all_info_3.5,
+#                           upregulated_mkk2ox_vs_wt_all_info_.8,
+#                           upregulated_mkk2ox_vs_wt_all_info_.9,
+#                           upregulated_mkk2ox_vs_wt_all_info_3.5)
+# write_xlsx(mkk2ox_vs_wt_list,"MKK2OX_vs_WT_all_info.xlsx")
+
 write_xlsx(downregulated_camkk2ox_vs_wt_all_info_.8,"CAMKK2OX_vs_WT_dowregulated_all_info_.8.xlsx")
 write_xlsx(downregulated_camkk2ox_vs_wt_all_info_.9,"CAMKK2OX_vs_WT_dowregulated_all_info_.9.xlsx")
 write_xlsx(downregulated_camkk2ox_vs_wt_all_info_3.5,"CAMKK2OX_vs_WT_dowregulated_all_info_3.5.xlsx")
@@ -1435,8 +1533,6 @@ write_xlsx(upregulated_mkk2ox_vs_camkk2ox_all_info_3.5,"MKK2OX_vs_CAMKK2OX_upreg
 write_xlsx(upregulated_mkk2ox_vs_wt_all_info_.8,"MKK2OX_vs_WT_upregulated_all_info_.8.xlsx")
 write_xlsx(upregulated_mkk2ox_vs_wt_all_info_.9,"MKK2OX_vs_WT_upregulated_all_info_.9.xlsx")
 write_xlsx(upregulated_mkk2ox_vs_wt_all_info_3.5,"MKK2OX_vs_WT_upregulated_all_info_3.5.xlsx")
-
-
 
 ##########################################################################################
 ### Create a document for reference
